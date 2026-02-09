@@ -1,0 +1,94 @@
+.wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand a {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.brand a:hover {
+  color: var(--accent);
+}
+
+.nav {
+  flex: 1;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navLink,
+.navActive {
+  padding: 0.65rem 1.5rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+}
+
+.navLink:hover {
+  background: rgba(14, 165, 233, 0.08);
+  color: var(--text-primary);
+}
+
+.navActive {
+  background: rgba(14, 165, 233, 0.15);
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+}
+
+.user {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.userName {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.userRole {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.logout {
+  margin-top: 8px;
+  padding: 0.5rem 0;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.logout:hover {
+  color: var(--accent-hover);
+}
+
+.main {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem 2rem;
+  background: var(--bg-primary);
+}
