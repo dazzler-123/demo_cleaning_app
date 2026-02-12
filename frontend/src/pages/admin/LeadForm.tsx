@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { leadsApi } from '@/api/endpoints';
-import type { ClientInfo, Location, CleaningDetails, Resources, LeadType } from '@/types';
+import type { ClientInfo, Location, CleaningDetails, Resources, LeadType, LeadStatus } from '@/types';
 import PageHeader from '@/components/PageHeader';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
@@ -168,7 +168,7 @@ export default function LeadForm() {
         slaPriority,
         ...(leadType ? { leadType } : {}),
         ...(allImages.length > 0 ? { images: allImages } : {}),
-        ...(isEdit ? { status } : {}),
+        ...(isEdit ? { status: status as LeadStatus } : {}),
         ...(quotedAmount !== undefined ? { quotedAmount } : {}),
         ...(confirmedAmount !== undefined ? { confirmedAmount } : {}),
         resources: {
@@ -313,8 +313,8 @@ export default function LeadForm() {
               variant="secondary"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingImages || loading}
-              startIcon={<ImageIcon />}
             >
+              <ImageIcon sx={{ mr: 1, fontSize: 20 }} />
               {uploadingImages ? 'Uploading...' : 'Select Images'}
             </Button>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

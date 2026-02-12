@@ -6,6 +6,8 @@ import PageHeader from '@/components/PageHeader';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import Button from '@/components/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
@@ -66,6 +68,8 @@ const DATE_RANGE_OPTIONS = [
 ];
 
 export default function AdminDashboard() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -432,7 +436,7 @@ export default function AdminDashboard() {
                 }}
               >
                 {kpi.trend === 'up' && <TrendingUpIcon sx={{ fontSize: 16, opacity: 0.95 }} />}
-                {kpi.trend === 'down' && <TrendingDownIcon sx={{ fontSize: 16, opacity: 0.95 }} />}
+                {kpi.trend !== null && kpi.trend !== 'up' && <TrendingDownIcon sx={{ fontSize: 16, opacity: 0.95 }} />}
                 <Typography variant="caption" sx={{ fontSize: '0.8125rem', fontWeight: 500, color: '#FFFFFF' }}>
                   {kpi.footerBar}
                 </Typography>
@@ -535,7 +539,7 @@ export default function AdminDashboard() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
               <BarChartIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'primary.main' }} />
-              <Typography variant={{ xs: 'body2', sm: 'subtitle1' }} fontWeight={600}>
+              <Typography variant={isMobile ? 'body2' : 'subtitle1'} fontWeight={600}>
                 Job trends ({dateRange === 'custom' ? getDateRangeLabel().toLowerCase() : `last ${Math.min(Number(dateRange) || 14, 14)} days`})
             </Typography>
             </Box>
@@ -912,7 +916,7 @@ export default function AdminDashboard() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
               <BarChartIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'primary.main' }} />
-              <Typography variant={{ xs: 'body2', sm: 'subtitle1' }} fontWeight={600}>
+              <Typography variant={isMobile ? 'body2' : 'subtitle1'} fontWeight={600}>
                 Assignments by status ({getDateRangeLabel().toLowerCase()})
               </Typography>
             </Box>

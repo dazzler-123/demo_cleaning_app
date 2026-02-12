@@ -8,6 +8,8 @@ import Button from '@/components/Button';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Alert from '@mui/material/Alert';
@@ -20,7 +22,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import { getStatusColor, getStatusChipProps } from '@/utils/statusColors';
-import { getImageUrl } from '@/utils/imageUrl';
+import { getImageUrl, getImageUrlFallback } from '@/utils/imageUrl';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import BusinessIcon from '@mui/icons-material/Business';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -47,6 +49,8 @@ const VALID_NEXT_STATUS: Record<string, string[]> = {
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [logs, setLogs] = useState<TaskLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +182,7 @@ export default function TaskDetail() {
         subtitle={`Current status: ${assignment.status.replace('_', ' ')}`}
         action={
           <Button
-            variant="outlined"
+            variant="secondary"
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/agent/tasks')}
             sx={{ textTransform: 'none' }}
@@ -233,7 +237,7 @@ export default function TaskDetail() {
               <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 600, letterSpacing: 0.8, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                 Current Status
               </Typography>
-              <Typography variant={{ xs: 'body1', sm: 'h6' }} fontWeight={700} sx={{ color: getStatusChipProps(assignment.status).sx?.bgcolor || '#051747' }}>
+              <Typography variant={isMobile ? 'body1' : 'h6'} fontWeight={700} sx={{ color: getStatusChipProps(assignment.status).sx?.bgcolor || '#051747' }}>
                 {assignment.status.replace('_', ' ').toUpperCase()}
               </Typography>
             </Box>
@@ -243,7 +247,7 @@ export default function TaskDetail() {
               <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 600, letterSpacing: 0.8, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                 Scheduled Date
               </Typography>
-              <Typography variant={{ xs: 'body2', sm: 'body1' }} fontWeight={600}>
+              <Typography variant={isMobile ? 'body2' : 'body1'} fontWeight={600}>
                 {new Date(schedule.date).toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
@@ -275,7 +279,7 @@ export default function TaskDetail() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <BusinessIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'primary.main' }} />
-              <Typography variant={{ xs: 'subtitle1', sm: 'h6' }} fontWeight={600}>
+              <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight={600}>
                 Client & Location
               </Typography>
             </Box>
@@ -387,7 +391,7 @@ export default function TaskDetail() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <ScheduleIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'primary.main' }} />
-              <Typography variant={{ xs: 'subtitle1', sm: 'h6' }} fontWeight={600}>
+              <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight={600}>
                 Schedule
               </Typography>
             </Box>
@@ -464,7 +468,7 @@ export default function TaskDetail() {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <UpdateIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'primary.main' }} />
-          <Typography variant={{ xs: 'subtitle1', sm: 'h6' }} fontWeight={600}>
+          <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight={600}>
             Update Status
           </Typography>
         </Box>
@@ -486,7 +490,7 @@ export default function TaskDetail() {
                   setImagePreviews([]);
                 }
               }}
-              fullWidth={{ xs: true, sm: false }}
+              fullWidth={isMobile}
               sx={{ minWidth: { sm: 180 } }}
               disabled={assignment.status === 'completed' || updating}
             >
@@ -500,7 +504,7 @@ export default function TaskDetail() {
               ))}
             </TextField>
             <Button
-              variant="contained"
+              variant="primary"
               onClick={handleUpdateStatus}
               disabled={updating || newStatus === assignment.status || assignment.status === 'completed'}
               startIcon={updating ? <CircularProgress size={16} /> : <UpdateIcon />}
@@ -543,7 +547,7 @@ export default function TaskDetail() {
               />
               <label htmlFor="image-upload">
                 <Button
-                  variant="outlined"
+                  variant="secondary"
                   component="span"
                   startIcon={<ImageIcon />}
                   sx={{ mb: 2 }}
@@ -645,7 +649,7 @@ export default function TaskDetail() {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <HistoryIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'primary.main' }} />
-          <Typography variant={{ xs: 'subtitle1', sm: 'h6' }} fontWeight={600}>
+          <Typography variant={isMobile ? 'subtitle1' : 'h6'} fontWeight={600}>
             Job History
           </Typography>
         </Box>

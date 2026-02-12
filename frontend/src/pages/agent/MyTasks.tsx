@@ -531,7 +531,7 @@ export default function MyTasks() {
                             Service Charge
                           </Typography>
                           <Typography variant="h5" fontWeight={800} sx={{ color: config.color, mt: 0.5 }}>
-                            ${typeof task.amount === 'number' ? task.amount.toFixed(2) : '0.00'}
+                            ${typeof task.leadId === 'object' && task.leadId && (task.leadId.confirmedAmount ?? task.leadId.quotedAmount) ? (task.leadId.confirmedAmount ?? task.leadId.quotedAmount ?? 0).toFixed(2) : '0.00'}
                           </Typography>
                         </Box>
 

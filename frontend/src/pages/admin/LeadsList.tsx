@@ -532,14 +532,14 @@ export default function LeadsList() {
         </DialogContent>
         <DialogActions>
           <Button
-            variant="outlined"
+            variant="secondary"
             onClick={() => setConfirmDialog({ open: false, leadId: null, confirmedAmount: undefined })}
             disabled={updatingStatusId !== null}
           >
             Cancel
           </Button>
           <Button
-            variant="contained"
+            variant="primary"
             onClick={handleConfirmWithAmount}
             disabled={updatingStatusId !== null || !confirmDialog.confirmedAmount || confirmDialog.confirmedAmount <= 0}
           >

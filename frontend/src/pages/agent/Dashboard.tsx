@@ -7,6 +7,8 @@ import PageHeader from '@/components/PageHeader';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
@@ -23,6 +25,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import WorkIcon from '@mui/icons-material/Work';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import {
   ResponsiveContainer,
   PieChart,
@@ -47,6 +50,8 @@ const DATE_RANGE_OPTIONS = [
 ];
 
 export default function AgentDashboard() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [data, setData] = useState<AgentDashboardOverview | null>(null);
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -442,7 +447,7 @@ export default function AgentDashboard() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
               <TrendingUpIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'primary.main' }} />
-              <Typography variant={{ xs: 'body2', sm: 'subtitle1' }} fontWeight={600}>
+              <Typography variant={isMobile ? 'body2' : 'subtitle1'} fontWeight={600}>
                 Task Trends ({getDateRangeLabel().toLowerCase()})
               </Typography>
             </Box>
@@ -602,7 +607,7 @@ export default function AgentDashboard() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
               <TrendingUpIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: 'primary.main' }} />
-              <Typography variant={{ xs: 'caption', sm: 'subtitle2' }} color="text.secondary">
+              <Typography variant={isMobile ? 'caption' : 'subtitle2'} color="text.secondary">
                 Completion Rate
               </Typography>
             </Box>
@@ -610,7 +615,7 @@ export default function AgentDashboard() {
               <CircularProgress
                 variant="determinate"
                 value={100}
-                size={{ xs: 120, sm: 160 }}
+                size={isMobile ? 120 : 160}
                 thickness={4}
                 sx={{
                   position: 'absolute',

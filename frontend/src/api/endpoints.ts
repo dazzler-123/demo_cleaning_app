@@ -1,6 +1,5 @@
 import { api } from './client';
 import { useAuthStore } from '@/store/authStore';
-import { useAuthStore } from '@/store/authStore';
 import type {
   AuthResponse,
   User,
@@ -14,6 +13,7 @@ import type {
   Location,
   CleaningDetails,
   Resources,
+  ApiResponse,
 } from '@/types';
 
 export const authApi = {
@@ -228,15 +228,18 @@ export const taskLogsApi = {
 
 export const dashboardApi = {
   overview: (params?: { fromDate?: string; toDate?: string; days?: number }) => {
-    const q = new URLSearchParams(params as Record<string, string>).toString();
+    const stringParams = params ? { ...params, ...(params.days !== undefined && { days: String(params.days) }) } : undefined;
+    const q = new URLSearchParams(stringParams as Record<string, string>).toString();
     return api<DashboardOverview>(`/dashboard/overview?${q}`);
   },
   agentOverview: (params?: { fromDate?: string; toDate?: string; days?: number }) => {
-    const q = new URLSearchParams(params as Record<string, string>).toString();
+    const stringParams = params ? { ...params, ...(params.days !== undefined && { days: String(params.days) }) } : undefined;
+    const q = new URLSearchParams(stringParams as Record<string, string>).toString();
     return api<AgentDashboardOverview>(`/dashboard/agent/overview?${q}`);
   },
   agentReport: (agentId: string, params?: { fromDate?: string; toDate?: string; days?: number }) => {
-    const queryParams = { agentId, ...params } as Record<string, string>;
+    const stringParams = params ? { ...params, ...(params.days !== undefined && { days: String(params.days) }) } : undefined;
+    const queryParams = { agentId, ...stringParams } as Record<string, string>;
     const q = new URLSearchParams(queryParams).toString();
     return api<AgentReport>(`/dashboard/agent/report?${q}`);
   },

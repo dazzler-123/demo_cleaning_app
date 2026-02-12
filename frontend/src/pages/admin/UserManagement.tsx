@@ -150,7 +150,7 @@ export default function UserManagement() {
               <Typography variant="body2" color="text.secondary">
                 Create your first user to get started
               </Typography>
-              <Button onClick={handleOpenCreate} variant="contained" sx={{ mt: 2 }}>
+              <Button onClick={handleOpenCreate} variant="primary" sx={{ mt: 2 }}>
                 {isSuperAdmin ? 'Create user' : 'Create agent'}
               </Button>
             </Box>
@@ -294,7 +294,7 @@ export default function UserManagement() {
           <Button onClick={() => setCreateOpen(false)} disabled={createLoading}>
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleCreate} disabled={createLoading}>
+          <Button variant="primary" onClick={handleCreate} disabled={createLoading}>
             {createLoading ? 'Creating...' : 'Create'}
           </Button>
         </DialogActions>

@@ -1,4 +1,5 @@
 import MuiButton from '@mui/material/Button';
+import type { SxProps, Theme } from '@mui/material/styles';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -7,6 +8,9 @@ interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>
   variant?: ButtonVariant;
   size?: ButtonSize;
   children: React.ReactNode;
+  sx?: SxProps<Theme>;
+  startIcon?: React.ReactNode;
+  component?: React.ElementType;
 }
 
 const variantMap: Record<ButtonVariant, 'contained' | 'outlined' | 'text'> = {
@@ -28,6 +32,9 @@ export default function Button({
   className = '',
   children,
   type = 'button',
+  sx,
+  startIcon,
+  component,
   ...props
 }: ButtonProps) {
   return (
@@ -37,6 +44,9 @@ export default function Button({
       size={sizeMap[size]}
       color={variant === 'danger' ? 'error' : 'primary'}
       className={className}
+      sx={sx}
+      startIcon={startIcon}
+      component={component}
       {...props}
     >
       {children}
