@@ -201,6 +201,7 @@ export default function AgentDashboard() {
       <PageHeader
         title="Dashboard"
         subtitle={`Welcome back, ${agent?.userId && typeof agent.userId === 'object' ? agent.userId.name : 'Agent'}`}
+        icon={<BarChartIcon sx={{ fontSize: 32 }} />}
         action={
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             {/* Date Range Filter */}

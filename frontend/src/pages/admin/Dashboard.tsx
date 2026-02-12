@@ -281,6 +281,7 @@ export default function AdminDashboard() {
       <PageHeader
         title="Dashboard"
         subtitle="Operational KPIs and analytics"
+        icon={<BarChartIcon sx={{ fontSize: 32 }} />}
         action={
           <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
             {/* Date Range Filter – compact */}

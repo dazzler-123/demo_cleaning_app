@@ -4,12 +4,15 @@ import app from './app.js';
 
 async function bootstrap() {
   await connectDatabase();
-  app.listen(config.port, () => {
-    console.log(`[Server] Running on http://localhost:${config.port}`);
+
+  const port = process.env.PORT || config.port || 3000;
+
+  app.listen(port, () => {
+    console.log(`[Server] Running on port ${port}`);
   });
 }
 
 bootstrap().catch((err) => {
-  console.error(err);
+  console.error('Server failed to start:', err);
   process.exit(1);
 });

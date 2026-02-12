@@ -20,6 +20,7 @@ import Stack from '@mui/material/Stack';
 import { getStatusChipProps, getStatusColor } from '@/utils/statusColors';
 import SearchIcon from '@mui/icons-material/Search';
 import InboxIcon from '@mui/icons-material/Inbox';
+import PeopleIcon from '@mui/icons-material/People';
 import Skeleton from '@mui/material/Skeleton';
 import Paper from '@mui/material/Paper';
 import Pagination from '@mui/material/Pagination';
@@ -144,6 +145,7 @@ export default function LeadsList() {
       <PageHeader
         title="Leads"
         // subtitle="Cleaning jobs and client information"
+        icon={<PeopleIcon sx={{ fontSize: 32 }} />}
         action={
           <Link to="/admin/leads/new" style={{ textDecoration: 'none' }}>
             <Button>

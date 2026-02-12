@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+import { StringValue } from 'ms';
+
 
 dotenv.config();
 
@@ -7,8 +9,8 @@ export const config = {
   port: parseInt(process.env.PORT ?? '4000', 10),
   mongoUri: process.env.MONGODB_URI as string,
   jwt: {  
-    secret: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',
-    expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
+    secret: process.env.JWT_SECRET as string ?? 'dev-secret-change-in-production',
+    expiresIn: process.env.JWT_EXPIRES_IN as StringValue ?? '7d',
   },
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME as string,

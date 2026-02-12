@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../../config/index.js';
 import { ApiError } from '../../shared/utils/ApiError.js';
 import { User } from '../../shared/models/index.js';
@@ -22,7 +22,10 @@ export const authService = {
       email: user.email,
       role: user.role as UserRole,
     };
-    const token = jwt.sign(payload, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
+    const options: SignOptions = {
+      expiresIn: config.jwt.expiresIn
+    };
+    const token = jwt.sign(payload, config.jwt.secret, options);
 
     await createAuditLog({
       userId: user._id.toString(),

@@ -1,4 +1,6 @@
 import { Assignment } from '../../shared/models/index.js';
+import { PipelineStage } from 'mongoose';
+
 
 export const assignmentsRepository = {
   async findById(id: string) {
@@ -101,7 +103,8 @@ export const assignmentsRepository = {
 
     if (search) {
       const regex = new RegExp(search, 'i');
-      const pipeline: Record<string, unknown>[] = [
+      
+const pipeline: PipelineStage[] = [
         { $match: query },
         {
           $lookup: {

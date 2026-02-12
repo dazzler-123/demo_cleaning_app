@@ -231,6 +231,7 @@ export default function MyTasks() {
       <PageHeader
         title="My Tasks"
         subtitle={`${filteredTasks.length} ${filteredTasks.length === 1 ? 'task' : 'tasks'} assigned`}
+        icon={<AssignmentIcon sx={{ fontSize: 32 }} />}
       />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
         <AssignmentIcon sx={{ fontSize: 20, color: 'primary.main' }} />
@@ -243,18 +244,19 @@ export default function MyTasks() {
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 1.5, sm: 2 },
+          p: { xs: 1.5, sm: 2.5 },
           mb: 3,
-          borderRadius: 2,
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%)',
           border: '1px solid',
-          borderColor: 'divider',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+          borderColor: 'rgba(16, 185, 129, 0.2)',
+          boxShadow: '0 4px 20px rgba(16, 185, 129, 0.08)',
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
           flexWrap: 'wrap',
           gap: 2,
           alignItems: { xs: 'stretch', sm: 'center' },
+          backdropFilter: 'blur(10px)',
         }}
       >
         <TextField
@@ -265,15 +267,31 @@ export default function MyTasks() {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: 'text.secondary' }} />
+                <SearchIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: '#10b981' }} />
               </InputAdornment>
             ),
           }}
           fullWidth
-          sx={{ flex: { xs: 'none', sm: 1 }, minWidth: { sm: 250 } }}
+          sx={{
+            flex: { xs: 'none', sm: 1 },
+            minWidth: { sm: 250 },
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+              backgroundColor: 'rgba(255, 255, 255, 0.7)',
+              backdropFilter: 'blur(10px)',
+              transition: 'all 0.3s ease',
+              '&:hover fieldset': {
+                borderColor: '#10b981',
+              },
+              '&.Mui-focused': {
+                backgroundColor: 'white',
+                boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.1)',
+              },
+            },
+          }}
         />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
-          <FilterListIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: 'text.secondary', display: { xs: 'none', sm: 'block' } }} />
+          <FilterListIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: '#10b981', display: { xs: 'none', sm: 'block' } }} />
           <TextField
             select
             size="small"
@@ -281,7 +299,22 @@ export default function MyTasks() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             fullWidth
-            sx={{ minWidth: { sm: 160 } }}
+            sx={{
+              minWidth: { sm: 160 },
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '12px',
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease',
+                '&:hover fieldset': {
+                  borderColor: '#10b981',
+                },
+                '&.Mui-focused': {
+                  backgroundColor: 'white',
+                  boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.1)',
+                },
+              },
+            }}
           >
             <MenuItem value="">All statuses</MenuItem>
             <MenuItem value="pending">Pending</MenuItem>
@@ -323,32 +356,34 @@ export default function MyTasks() {
               elevation={0}
               sx={{
                 p: 6,
-                borderRadius: 2,
-                border: '1px dashed',
-                borderColor: 'divider',
+                borderRadius: '20px',
+                border: '2px dashed',
+                borderColor: 'rgba(16, 185, 129, 0.3)',
                 textAlign: 'center',
-                background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
+                background: 'linear-gradient(135deg, rgba(240, 253, 250, 0.5) 0%, rgba(236, 254, 245, 0.5) 100%)',
+                backdropFilter: 'blur(10px)',
               }}
             >
               <Box
                 sx={{
-                  width: 80,
-                  height: 80,
+                  width: 100,
+                  height: 100,
                   borderRadius: '50%',
-                  bgcolor: 'primary.light',
+                  background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   mx: 'auto',
-                  mb: 2,
+                  mb: 3,
+                  boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)',
                 }}
               >
-                <InboxIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+                <InboxIcon sx={{ fontSize: 50, color: 'white' }} />
               </Box>
-              <Typography variant="h5" fontWeight={600} color="text.primary" gutterBottom>
+              <Typography variant="h5" fontWeight={800} color="text.primary" gutterBottom>
                 {searchQuery || statusFilter ? 'No tasks match your filters' : 'No tasks assigned'}
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+              <Typography variant="body1" color="text.secondary" sx={{ mt: 1, fontSize: '1rem' }}>
                 {searchQuery || statusFilter
                   ? 'Try adjusting your search or filter criteria'
                   : "You'll see your assigned tasks here when they're available"}
@@ -361,357 +396,194 @@ export default function MyTasks() {
                 const lead = task.leadId && typeof task.leadId === 'object' ? task.leadId : null;
                 const schedule = task.scheduleId && typeof task.scheduleId === 'object' ? task.scheduleId : null;
                 
+                const priorityConfig = {
+                  overdue: { bg: 'rgba(239, 68, 68, 0.08)', border: 'rgba(239, 68, 68, 0.3)', label: 'Overdue', color: '#ef4444', icon: '🚨' },
+                  urgent: { bg: 'rgba(234, 179, 8, 0.08)', border: 'rgba(234, 179, 8, 0.3)', label: 'Urgent', color: '#eab308', icon: '⚡' },
+                  today: { bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.3)', label: 'Today', color: '#3b82f6', icon: '📅' },
+                  normal: { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)', label: 'Normal', color: '#10b981', icon: '✓' },
+                };
+                const config = priorityConfig[priority];
+                
                 return (
                   <Grid item xs={12} sm={6} md={4} key={task._id}>
                     <Paper
                       elevation={0}
                       onClick={() => navigate(`/agent/tasks/${task._id}`)}
                       sx={{
-                        p: 3,
-                        borderRadius: 2,
-                        background: priority === 'overdue' 
-                          ? 'linear-gradient(135deg, #fff5f5 0%, #ffffff 100%)'
-                          : priority === 'urgent'
-                          ? 'linear-gradient(135deg, #fffbf0 0%, #ffffff 100%)'
-                          : 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-                        border: '1px solid',
-                        borderColor: priority === 'overdue' ? 'error.light' : priority === 'urgent' ? 'warning.light' : 'rgba(0, 0, 0, 0.08)',
+                        p: 0,
+                        borderRadius: '16px',
+                        background: config.bg,
+                        backdropFilter: 'blur(10px)',
+                        border: '1.5px solid',
+                        borderColor: config.border,
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
                         cursor: 'pointer',
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
                         position: 'relative',
                         overflow: 'hidden',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                        boxShadow: `0 8px 24px rgba(16, 185, 129, 0.12)`,
                         '&:hover': {
-                          boxShadow: '0 8px 24px rgba(5, 23, 71, 0.12)',
-                          transform: 'translateY(-4px)',
-                          borderColor: 'primary.main',
-                          background: priority === 'overdue' 
-                            ? 'linear-gradient(135deg, #fff5f5 0%, #ffffff 100%)'
-                            : priority === 'urgent'
-                            ? 'linear-gradient(135deg, #fffbf0 0%, #ffffff 100%)'
-                            : 'linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%)',
+                          boxShadow: `0 20px 40px ${config.color}40`,
+                          transform: 'translateY(-8px) scale(1.02)',
+                          borderColor: config.color,
+                          background: `linear-gradient(135deg, ${config.bg} 0%, rgba(255, 255, 255, 0.5) 100%)`,
                         },
                         '&::before': {
                           content: '""',
                           position: 'absolute',
                           top: 0,
                           left: 0,
-                          width: '5px',
-                          height: '100%',
-                          background: `linear-gradient(180deg, ${getStatusChipProps(task.status).sx?.bgcolor || '#051747'} 0%, ${getStatusChipProps(task.status).sx?.bgcolor || '#051747'}dd 100%)`,
-                          borderRadius: '12px 0 0 12px',
+                          width: '100%',
+                          height: '4px',
+                          background: `linear-gradient(90deg, ${config.color} 0%, ${config.color}66 100%)`,
                         },
                       }}
                     >
-                      <Stack spacing={1.5} sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                        {/* Header */}
-                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1} sx={{ pl: 1 }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                              <Box
-                                sx={{
-                                  p: 1,
-                                  borderRadius: 2,
-                                  bgcolor: 'primary.main',
-                                  color: 'white',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  boxShadow: '0 2px 8px rgba(5, 23, 71, 0.2)',
-                                }}
-                              >
-                                <BusinessIcon sx={{ fontSize: 20 }} />
-                              </Box>
-                              <Typography variant="h6" fontWeight={700} sx={{ color: 'text.primary', fontSize: '1.1rem' }}>
-                                {companyName(task)}
-                              </Typography>
-                            </Box>
-                            {priority === 'overdue' && (
-                              <Chip
-                                label="Overdue"
-                                size="small"
-                                sx={{
-                                  height: 20,
-                                  fontSize: '0.7rem',
-                                  bgcolor: 'error.main',
-                                  color: '#FFFFFF',
-                                  fontWeight: 600,
-                                }}
-                              />
-                            )}
-                            {priority === 'today' && (
-                              <Chip
-                                label="Today"
-                                size="small"
-                                sx={{
-                                  height: 20,
-                                  fontSize: '0.7rem',
-                                  bgcolor: 'warning.main',
-                                  color: '#FFFFFF',
-                                  fontWeight: 600,
-                                }}
-                              />
-                            )}
-                            {priority === 'urgent' && (
-                              <Chip
-                                label="Upcoming"
-                                size="small"
-                                sx={{
-                                  height: 20,
-                                  fontSize: '0.7rem',
-                                  bgcolor: 'info.main',
-                                  color: '#FFFFFF',
-                                  fontWeight: 600,
-                                }}
-                              />
-                            )}
+                      {/* Priority Badge */}
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 12,
+                          right: 12,
+                          px: 1.5,
+                          py: 0.75,
+                          borderRadius: '8px',
+                          bgcolor: config.color,
+                          color: 'white',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          boxShadow: `0 4px 12px ${config.color}40`,
+                          zIndex: 10,
+                        }}
+                      >
+                        {config.icon} {config.label}
+                      </Box>
+
+                      {/* Content */}
+                      <Stack spacing={2} sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                        {/* Company Header */}
+                        <Stack direction="row" alignItems="center" gap={2}>
+                          <Box
+                            sx={{
+                              p: 1.25,
+                              borderRadius: '12px',
+                              background: `linear-gradient(135deg, ${config.color} 0%, ${config.color}dd 100%)`,
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: `0 4px 12px ${config.color}40`,
+                            }}
+                          >
+                            <BusinessIcon sx={{ fontSize: 22 }} />
                           </Box>
-                          <Chip
-                            label={task.status.replace('_', ' ')}
-                            size="small"
-                            {...getStatusChipProps(task.status)}
-                          />
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="h6" fontWeight={800} sx={{ color: 'text.primary', fontSize: '1.1rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {companyName(task)}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                              {task.status?.replace('_', ' ')}
+                            </Typography>
+                          </Box>
                         </Stack>
 
-                        <Divider />
-
-                        {/* Schedule Info */}
-                        {schedule && (
-                          <Box 
-                            sx={{ 
-                              display: 'flex', 
-                              alignItems: 'flex-start', 
-                              gap: 1.5,
-                              p: 1.5,
-                              bgcolor: 'rgba(5, 23, 71, 0.02)',
-                              borderRadius: 2,
-                              border: '1px solid',
-                              borderColor: 'rgba(5, 23, 71, 0.08)',
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                p: 0.75,
-                                borderRadius: 1.5,
-                                bgcolor: 'primary.main',
-                                color: 'white',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                minWidth: 32,
-                                height: 32,
-                              }}
-                            >
-                              <ScheduleIcon sx={{ fontSize: 16 }} />
-                            </Box>
-                            <Box sx={{ flex: 1 }}>
-                              <Typography variant="body2" fontWeight={600} color="text.primary" sx={{ mb: 0.5 }}>
-                                {new Date(schedule.date).toLocaleDateString('en-US', {
-                                  weekday: 'short',
-                                  month: 'short',
-                                  day: 'numeric',
-                                })}
+                        {/* Location and Time */}
+                        <Stack spacing={1.5} sx={{ flex: 1 }}>
+                          {lead?.location && (
+                            <Stack direction="row" alignItems="flex-start" gap={1.5} sx={{ minWidth: 0 }}>
+                              <LocationOnIcon sx={{ fontSize: 18, color: config.color, mt: 0.3, flexShrink: 0 }} />
+                              <Typography variant="body2" sx={{ color: 'text.secondary', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {lead.location.address}, {lead.location.city}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <AccessTimeIcon sx={{ fontSize: 14 }} />
-                                {schedule.timeSlot} · {schedule.duration} min
-                              </Typography>
-                            </Box>
-                          </Box>
-                        )}
+                            </Stack>
+                          )}
+                          {schedule && (
+                            <Stack direction="row" alignItems="center" gap={1.5}>
+                              <ScheduleIcon sx={{ fontSize: 18, color: config.color, flexShrink: 0 }} />
+                              <Box sx={{ minWidth: 0, flex: 1 }}>
+                                <Typography variant="body2" sx={{ color: 'text.secondary', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {new Date(schedule.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                  {schedule.timeSlot} · {schedule.duration} min
+                                </Typography>
+                              </Box>
+                            </Stack>
+                          )}
+                        </Stack>
 
-                        {/* Location */}
-                        {lead?.location && (
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                            <LocationOnIcon sx={{ fontSize: 20, color: 'error.main', mt: 0.25 }} />
-                            <Typography variant="body2" color="text.secondary" sx={{ flex: 1, lineHeight: 1.6 }}>
-                              {lead.location.address}, {lead.location.city} {lead.location.pincode}
-                            </Typography>
-                          </Box>
-                        )}
-
-                        {/* Cleaning Type */}
-                        {lead?.cleaningDetails && (
-                          <Box>
-                            <Chip
-                              label={lead.cleaningDetails.cleaningType}
-                              size="small"
-                              sx={{
-                                height: 22,
-                                fontSize: '0.75rem',
-                                bgcolor: 'background.default',
-                                color: 'text.secondary',
-                              }}
-                            />
-                          </Box>
-                        )}
-
-                        {/* Service Charge */}
-                        {lead?.confirmedAmount !== undefined && lead?.confirmedAmount !== null && (
-                          <Box 
-                            sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'space-between',
-                              gap: 1, 
-                              p: 1.5, 
-                              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-                              borderRadius: 2,
-                              border: '1px solid',
-                              borderColor: 'primary.light',
-                              boxShadow: '0 2px 4px rgba(5, 23, 71, 0.08)',
-                            }}
-                          >
-                            <Typography variant="body2" fontWeight={600} sx={{ color: 'primary.dark', fontSize: '0.875rem' }}>
-                              Service Charge
-                            </Typography>
-                            <Typography variant="h6" fontWeight={700} sx={{ color: 'primary.main', fontSize: '1.1rem' }}>
-                              ${lead.confirmedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </Typography>
-                          </Box>
-                        )}
-
-                        {/* Completion Images Thumbnail */}
-                        {task.status === 'completed' && task.completionImages && task.completionImages.length > 0 && (
-                          <Box>
-                            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                              Completion Images ({task.completionImages.length})
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                              {task.completionImages.slice(0, 3).map((img, idx) => (
-                                <Box
-                                  key={idx}
-                                  component="img"
-                                  src={getImageUrl(img)}
-                                  alt={`Completion ${idx + 1}`}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    const fallbackUrl = getImageUrlFallback(img);
-                                    if (target.src !== fallbackUrl) {
-                                      target.src = fallbackUrl;
-                                    }
-                                  }}
-                                  sx={{
-                                    width: 60,
-                                    height: 60,
-                                    objectFit: 'cover',
-                                    borderRadius: 1,
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                  }}
-                                />
-                              ))}
-                              {task.completionImages.length > 3 && (
-                                <Box
-                                  sx={{
-                                    width: 60,
-                                    height: 60,
-                                    borderRadius: 1,
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    bgcolor: 'background.default',
-                                  }}
-                                >
-                                  <Typography variant="caption" color="text.secondary">
-                                    +{task.completionImages.length - 3}
-                                  </Typography>
-                                </Box>
-                              )}
-                            </Box>
-                          </Box>
-                        )}
+                        {/* Service Charge Card */}
+                        <Box
+                          sx={{
+                            p: 2,
+                            borderRadius: '12px',
+                            background: `linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 100%)`,
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid',
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.5px' }}>
+                            Service Charge
+                          </Typography>
+                          <Typography variant="h5" fontWeight={800} sx={{ color: config.color, mt: 0.5 }}>
+                            ${typeof task.amount === 'number' ? task.amount.toFixed(2) : '0.00'}
+                          </Typography>
+                        </Box>
 
                         {/* Action Buttons */}
-                        <Stack direction="row" spacing={1.5} sx={{ mt: 'auto', pt: 2 }}>
-                          {task.status !== 'completed' && task.status !== 'cancelled' && (
-                            <>
-                              {(VALID_NEXT_STATUS[task.status] ?? []).length > 0 && (
-                                <Button
-                                  variant="contained"
-                                  size="medium"
-                                  startIcon={<UpdateIcon />}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleOpenUpdate(task);
-                                  }}
-                                  sx={{
-                                    flex: 1,
-                                    textTransform: 'none',
-                                    fontWeight: 600,
-                                    borderRadius: 2,
-                                    py: 1,
-                                    background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-                                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
-                                    '&:hover': {
-                                      background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
-                                      boxShadow: '0 6px 16px rgba(25, 118, 210, 0.4)',
-                                    },
-                                  }}
-                                >
-                                  Update
-                                </Button>
-                              )}
-                              <Button
-                                variant="outlined"
-                                color="error"
-                                size="medium"
-                                startIcon={<CancelIcon />}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleOpenCancel(task);
-                                }}
-                                sx={{
-                                  textTransform: 'none',
-                                  fontWeight: 600,
-                                  borderRadius: 2,
-                                  py: 1,
-                                  borderWidth: 2,
-                                  '&:hover': {
-                                    borderWidth: 2,
-                                    bgcolor: 'error.light',
-                                    color: 'error.dark',
-                                  },
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                            </>
-                          )}
+                        <Stack direction="row" spacing={1.5} sx={{ pt: 1 }}>
                           <Button
-                            variant={task.status === 'completed' || task.status === 'cancelled' ? 'contained' : 'outlined'}
-                            size="medium"
+                            variant="contained"
+                            size="small"
                             onClick={(e) => {
-                              e.preventDefault();
                               e.stopPropagation();
-                              navigate(`/agent/tasks/${task._id}`);
+                              handleOpenUpdate(task);
                             }}
+                            startIcon={<UpdateIcon />}
                             sx={{
-                              flex: task.status === 'completed' || task.status === 'cancelled' ? 1 : 'none',
+                              flex: 1,
+                              borderRadius: '10px',
+                              background: `linear-gradient(135deg, ${config.color} 0%, ${config.color}dd 100%)`,
+                              boxShadow: `0 4px 12px ${config.color}40`,
                               textTransform: 'none',
-                              fontWeight: 600,
-                              borderRadius: 2,
-                              py: 1,
-                              ...(task.status === 'completed' || task.status === 'cancelled' 
-                                ? {
-                                    background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
-                                    boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
-                                    '&:hover': {
-                                      background: 'linear-gradient(135deg, #388e3c 0%, #2e7d32 100%)',
-                                    },
-                                  }
-                                : {}
-                              ),
+                              fontWeight: 700,
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                boxShadow: `0 8px 20px ${config.color}60`,
+                                transform: 'translateY(-2px)',
+                              },
                             }}
                           >
-                            View
+                            Update
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCancel(task);
+                            }}
+                            startIcon={<CancelIcon />}
+                            sx={{
+                              flex: 1,
+                              borderRadius: '10px',
+                              borderColor: config.color,
+                              color: config.color,
+                              textTransform: 'none',
+                              fontWeight: 700,
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                borderColor: config.color,
+                                backgroundColor: `${config.color}15`,
+                              },
+                            }}
+                          >
+                            Cancel
                           </Button>
                         </Stack>
                       </Stack>
