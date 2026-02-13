@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => ({
       mode === 'development'
         ? {
             '/api': {
-              target: 'http://localhost:4000',
+              target: 'https://api.groupservefacilities.co.uk',
               changeOrigin: true,
               secure: false,
             },

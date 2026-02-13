@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, BASE } from './client';
 import { useAuthStore } from '@/store/authStore';
 import type {
   AuthResponse,
@@ -89,7 +89,7 @@ export const leadsApi = {
     const token = useAuthStore.getState().token ?? localStorage.getItem('token');
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch('/api/leads/upload-images', {
+    const res = await fetch(`${BASE}/leads/upload-images`, {
       method: 'POST',
       headers,
       body: formData,
@@ -207,7 +207,7 @@ export const assignmentsApi = {
       images.forEach((img) => formData.append('images', img));
     }
     const token = useAuthStore.getState().token ?? localStorage.getItem('token');
-    return fetch(`/api/assignments/${id}/status`, {
+    return fetch(`${BASE}/assignments/${id}/status`, {
       method: 'PATCH',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,

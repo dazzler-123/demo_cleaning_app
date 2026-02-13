@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/store/authStore';
 
-const BASE = '/api';
+export const BASE =  'https://api.groupservefacilities.co.uk/api';
 
 function getToken(): string | null {
   return useAuthStore.getState().token ?? localStorage.getItem('token');
