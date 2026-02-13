@@ -28,6 +28,27 @@ export async function connectDatabase(): Promise<void> {
       return;
     }
 
+    // If connection is in progress, wait for it
+    if (mongoose.connection.readyState === 2) {
+      console.log('[DB] MongoDB connection in progress, waiting...');
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Database connection timeout while waiting for existing connection'));
+        }, 30000);
+
+        mongoose.connection.once('connected', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+
+        mongoose.connection.once('error', (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+      });
+      return;
+    }
+
     console.log('[DB] Connecting to MongoDB...');
     await mongoose.connect(mongoUri, options);
     
