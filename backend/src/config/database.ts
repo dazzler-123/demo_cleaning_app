@@ -20,6 +20,7 @@ export async function connectDatabase(): Promise<void> {
       // bufferCommands defaults to true, allowing queries to buffer until connection is ready
       // This is important for server environments where connection might take time
     };
+    console.log('MongoDB URI:', mongoUri);
 
     await mongoose.connect(mongoUri, options);
     

@@ -30,7 +30,7 @@ const agentSchema = new Schema<IAgent>(
   { timestamps: true }
 );
 
-agentSchema.index({ userId: 1 });
+// agentSchema.index({ userId: 1 });
 agentSchema.index({ availability: 1, status: 1 });
 
 export const Agent: Model<IAgent> = mongoose.model<IAgent>('Agent', agentSchema);
