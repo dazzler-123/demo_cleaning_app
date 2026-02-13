@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import { config } from './config/index.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
@@ -55,7 +56,22 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/audit', auditRoutes);
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, timestamp: new Date().toISOString() });
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  const readyStates = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+  };
+  res.json({ 
+    ok: dbStatus === 'connected', 
+    timestamp: new Date().toISOString(),
+    database: {
+      status: dbStatus,
+      readyState: mongoose.connection.readyState,
+      readyStateText: readyStates[mongoose.connection.readyState as keyof typeof readyStates] || 'unknown'
+    }
+  });
 });
 
 // Debug endpoint to check uploads path
