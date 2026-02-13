@@ -728,21 +728,8 @@ export default function AdminDashboard() {
                         paddingAngle={1}
                         dataKey="value"
                         nameKey="name"
-                        label={({
-                          cx,
-                          cy,
-                          midAngle,
-                          outerRadius,
-                          name,
-                          percent,
-                        }: {
-                          cx: number;
-                          cy: number;
-                          midAngle: number;
-                          outerRadius: number;
-                          name: string;
-                          percent: number;
-                        }) => {
+                        label={(props) => {
+                          const { cx = 0, cy = 0, midAngle = 0, outerRadius = 0, name = '', percent = 0 } = props;
                           const RADIAN = Math.PI / 180;
                           const radius = outerRadius + 10;
                           const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -836,21 +823,8 @@ export default function AdminDashboard() {
                         paddingAngle={1}
                         dataKey="value"
                         nameKey="name"
-                        label={({
-                          cx,
-                          cy,
-                          midAngle,
-                          outerRadius,
-                          name,
-                          percent,
-                        }: {
-                          cx: number;
-                          cy: number;
-                          midAngle: number;
-                          outerRadius: number;
-                          name: string;
-                          percent: number;
-                        }) => {
+                        label={(props) => {
+                          const { cx = 0, cy = 0, midAngle = 0, outerRadius = 0, name = '', percent = 0 } = props;
                           const RADIAN = Math.PI / 180;
                           const radius = outerRadius + 10;
                           const x = cx + radius * Math.cos(-midAngle * RADIAN);

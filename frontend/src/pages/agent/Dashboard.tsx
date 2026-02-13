@@ -569,7 +569,10 @@ export default function AgentDashboard() {
                     paddingAngle={2}
                     dataKey="value"
                     nameKey="name"
-                    label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={(props) => {
+                      const { name = '', percent = 0 } = props;
+                      return `${name} ${(percent * 100).toFixed(0)}%`;
+                    }}
                   >
                     {statusPieData.map((entry, i) => (
                       <Cell key={i} fill={getStatusChipProps(entry.status).sx?.bgcolor || STATUS_COLORS.default} />
