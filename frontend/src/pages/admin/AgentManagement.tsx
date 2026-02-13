@@ -786,7 +786,10 @@ export default function AgentManagement() {
                                     cx="50%"
                                     cy="50%"
                                     labelLine={false}
-                                    label={(entry: { name: string; value: number; percent: number }) => `${entry.name}: ${entry.value}`}
+                                    label={(props) => {
+                                      const { name = '', value = 0 } = props;
+                                      return `${name}: ${value}`;
+                                    }}
                                     outerRadius={80}
                                     fill="#8884d8"
                                     dataKey="value"
