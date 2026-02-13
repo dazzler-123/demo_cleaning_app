@@ -5,24 +5,24 @@ export async function connectDatabase(): Promise<void> {
   try {
     // Remove unsupported options from connection string if present
     let mongoUri = config.mongoUri;
-    // Remove buffermaxentries from connection string (not supported by MongoDB driver)
-    mongoUri = mongoUri.replace(/[?&]buffermaxentries=\d+/gi, '');
-    // Clean up any double ? or & characters
-    mongoUri = mongoUri.replace(/\?&/g, '?').replace(/&+/g, '&');
+    // // Remove buffermaxentries from connection string (not supported by MongoDB driver)
+    // mongoUri = mongoUri.replace(/[?&]buffermaxentries=\d+/gi, '');
+    // // Clean up any double ? or & characters
+    // mongoUri = mongoUri.replace(/\?&/g, '?').replace(/&+/g, '&');
     
-    // Add connection options for better reliability in production
-    const options = {
-      serverSelectionTimeoutMS: 30000, // 30 seconds instead of default 10
-      socketTimeoutMS: 45000, // 45 seconds
-      connectTimeoutMS: 30000, // 30 seconds
-      maxPoolSize: 10, // Maintain up to 10 socket connections
-      minPoolSize: 2, // Maintain at least 2 socket connections
-      // bufferCommands defaults to true, allowing queries to buffer until connection is ready
-      // This is important for server environments where connection might take time
-    };
+    // // Add connection options for better reliability in production
+    // const options = {
+    //   serverSelectionTimeoutMS: 30000, // 30 seconds instead of default 10
+    //   socketTimeoutMS: 45000, // 45 seconds
+    //   connectTimeoutMS: 30000, // 30 seconds
+    //   maxPoolSize: 10, // Maintain up to 10 socket connections
+    //   minPoolSize: 2, // Maintain at least 2 socket connections
+    //   // bufferCommands defaults to true, allowing queries to buffer until connection is ready
+    //   // This is important for server environments where connection might take time
+    // };
     console.log('MongoDB URI:', mongoUri);
 
-    await mongoose.connect(mongoUri, options);
+    await mongoose.connect(mongoUri);
     
     // Verify connection is ready
     if (mongoose.connection.readyState !== 1) {
