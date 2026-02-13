@@ -5,31 +5,56 @@ export async function connectDatabase(): Promise<void> {
   try {
     // Remove unsupported options from connection string if present
     let mongoUri = config.mongoUri;
-    // // Remove buffermaxentries from connection string (not supported by MongoDB driver)
-    // mongoUri = mongoUri.replace(/[?&]buffermaxentries=\d+/gi, '');
-    // // Clean up any double ? or & characters
-    // mongoUri = mongoUri.replace(/\?&/g, '?').replace(/&+/g, '&');
+    // Remove buffermaxentries from connection string (not supported by MongoDB driver)
+    mongoUri = mongoUri.replace(/[?&]buffermaxentries=\d+/gi, '');
+    // Clean up any double ? or & characters
+    mongoUri = mongoUri.replace(/\?&/g, '?').replace(/&+/g, '&');
     
-    // // Add connection options for better reliability in production
-    // const options = {
-    //   serverSelectionTimeoutMS: 30000, // 30 seconds instead of default 10
-    //   socketTimeoutMS: 45000, // 45 seconds
-    //   connectTimeoutMS: 30000, // 30 seconds
-    //   maxPoolSize: 10, // Maintain up to 10 socket connections
-    //   minPoolSize: 2, // Maintain at least 2 socket connections
-    //   // bufferCommands defaults to true, allowing queries to buffer until connection is ready
-    //   // This is important for server environments where connection might take time
-    // };
-    console.log('MongoDB URI:', mongoUri);
+    // Set buffer options BEFORE connecting
+    mongoose.set('bufferCommands', true);
+    
+    // Add connection options for better reliability in production
+    const options = {
+      serverSelectionTimeoutMS: 30000, // 30 seconds instead of default 10
+      socketTimeoutMS: 45000, // 45 seconds
+      connectTimeoutMS: 30000, // 30 seconds
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      minPoolSize: 2, // Maintain at least 2 socket connections
+    };
 
-    await mongoose.connect(mongoUri);
-    
-    // Verify connection is ready
-    if (mongoose.connection.readyState !== 1) {
-      throw new Error('Database connection not ready after connect()');
+    // Check if already connected
+    if (mongoose.connection.readyState === 1) {
+      console.log('[DB] MongoDB already connected');
+      return;
     }
+
+    console.log('[DB] Connecting to MongoDB...');
+    await mongoose.connect(mongoUri, options);
     
-    console.log('[DB] MongoDB connected');
+    // Wait for connection to be fully ready
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Database connection timeout after 30 seconds'));
+      }, 30000);
+
+      if (mongoose.connection.readyState === 1) {
+        clearTimeout(timeout);
+        resolve();
+        return;
+      }
+
+      mongoose.connection.once('connected', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+
+      mongoose.connection.once('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+    
+    console.log('[DB] MongoDB connected successfully');
 
     // Add connection event handlers
     mongoose.connection.on('error', (err) => {
@@ -52,7 +77,11 @@ export async function connectDatabase(): Promise<void> {
     });
   } catch (error) {
     console.error('[DB] MongoDB connection error:', error);
-    process.exit(1);
+    // In Vercel/serverless, don't exit immediately - let it retry
+    if (process.env.VERCEL !== '1') {
+      process.exit(1);
+    }
+    throw error;
   }
 }
 
