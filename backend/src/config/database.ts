@@ -3,6 +3,13 @@ import { config } from './index.js';
 
 export async function connectDatabase(): Promise<void> {
   try {
+    // Remove unsupported options from connection string if present
+    let mongoUri = config.mongoUri;
+    // Remove buffermaxentries from connection string (not supported by MongoDB driver)
+    mongoUri = mongoUri.replace(/[?&]buffermaxentries=\d+/gi, '');
+    // Clean up any double ? or & characters
+    mongoUri = mongoUri.replace(/\?&/g, '?').replace(/&+/g, '&');
+    
     // Add connection options for better reliability in production
     const options = {
       serverSelectionTimeoutMS: 30000, // 30 seconds instead of default 10
@@ -10,11 +17,17 @@ export async function connectDatabase(): Promise<void> {
       connectTimeoutMS: 30000, // 30 seconds
       maxPoolSize: 10, // Maintain up to 10 socket connections
       minPoolSize: 2, // Maintain at least 2 socket connections
-      bufferMaxEntries: 0, // Disable mongoose buffering; throw immediately
-      bufferCommands: false, // Disable mongoose buffering
+      // bufferCommands defaults to true, allowing queries to buffer until connection is ready
+      // This is important for server environments where connection might take time
     };
 
-    await mongoose.connect(config.mongoUri, options);
+    await mongoose.connect(mongoUri, options);
+    
+    // Verify connection is ready
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('Database connection not ready after connect()');
+    }
+    
     console.log('[DB] MongoDB connected');
 
     // Add connection event handlers
