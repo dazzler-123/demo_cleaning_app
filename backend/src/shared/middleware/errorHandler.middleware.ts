@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../utils/ApiError.js';
-import mongoose from 'mongoose';
+import { Prisma } from '@prisma/client';
 
 export function errorHandler(
   err: Error,
@@ -13,12 +13,22 @@ export function errorHandler(
     return;
   }
 
-  if (err.name === 'ValidationError') {
-    const message = Object.values((err as mongoose.Error.ValidationError).errors)
-      .map((e) => e.message)
-      .join(', ');
-    res.status(400).json({ success: false, message });
+  // Handle Prisma validation errors
+  if (err instanceof Prisma.PrismaClientValidationError) {
+    res.status(400).json({ success: false, message: 'Validation error: ' + err.message });
     return;
+  }
+
+  // Handle Prisma known request errors
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === 'P2002') {
+      res.status(400).json({ success: false, message: 'Unique constraint violation' });
+      return;
+    }
+    if (err.code === 'P2025') {
+      res.status(404).json({ success: false, message: 'Record not found' });
+      return;
+    }
   }
 
   if (err.name === 'JsonWebTokenError') {

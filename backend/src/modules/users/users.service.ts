@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { ApiError } from '../../shared/utils/ApiError.js';
-import { User } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 import { usersRepository } from './users.repository.js';
 import { createAuditLog } from '../../shared/services/audit.service.js';
 import type { UserRole, UserStatus } from '../../shared/types/index.js';
@@ -24,18 +24,23 @@ export const usersService = {
     if (actorRole === 'admin' && data.role !== 'agent') {
       throw new ApiError(403, 'Admin can only create agents, not other admins');
     }
-    const existing = await User.findOne({ email: data.email.toLowerCase() });
+    
+    const existing = await prisma.user.findUnique({ where: { email: data.email.toLowerCase() } });
     if (existing) throw new ApiError(400, 'Email already registered');
+    
     const hashed = await bcrypt.hash(data.password, 12);
     const user = await usersRepository.create({ ...data, password: hashed });
+    
+    const userId = (user as any)._id?.toString() || (user as any).id;
     await createAuditLog({
       userId: actorId,
       action: 'create',
       resource: 'user',
-      resourceId: user._id.toString(),
+      resourceId: userId,
       details: { email: user.email, role: user.role },
     });
-    return usersRepository.findById(user._id.toString());
+    
+    return usersRepository.findById(userId);
   },
 
   async update(

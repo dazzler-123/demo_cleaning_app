@@ -1,6 +1,5 @@
 import { ApiError } from '../../shared/utils/ApiError.js';
-import { Schedule, Assignment } from '../../shared/models/index.js';
-import { Lead } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 import { leadsRepository } from './leads.repository.js';
 import { createAuditLog } from '../../shared/services/audit.service.js';
 import type { ILead, IClientInfo, ILocation, ICleaningDetails, IResources } from '../../shared/models/index.js';
@@ -222,15 +221,16 @@ export const leadsService = {
       assignmentStatus: 'not_assigned',
     });
 
+    const leadId = (lead as any)._id?.toString() || (lead as any).id;
     await createAuditLog({
       userId: createdBy,
       action: 'create',
       resource: 'lead',
-      resourceId: (lead as ILead)._id.toString(),
+      resourceId: leadId,
       details: { companyName: data.client.companyName },
     });
 
-    return leadsRepository.findById((lead as ILead)._id.toString());
+    return leadsRepository.findById(leadId);
   },
 
   async update(id: string, data: Partial<LeadCreateInput>, actorId: string) {
@@ -263,12 +263,15 @@ export const leadsService = {
       throw new ApiError(400, 'Lead is already cancelled');
     }
 
-    await Lead.findByIdAndUpdate(id, { $set: { status: 'cancelled' } });
+    await prisma.lead.update({
+      where: { id },
+      data: { status: 'cancelled' },
+    });
 
-    await Assignment.updateMany(
-      { leadId: id },
-      { $set: { isActive: false, status: 'cancelled' } }
-    );
+    await prisma.assignment.updateMany({
+      where: { leadId: id },
+      data: { isActive: false, status: 'cancelled' },
+    });
 
     await createAuditLog({
       userId: actorId,
@@ -285,8 +288,10 @@ export const leadsService = {
     const lead = await leadsRepository.findById(id);
     if (!lead) throw new ApiError(404, 'Lead not found');
 
-    const hasSchedules = await Schedule.exists({ leadId: id });
-    const hasAssignments = await Assignment.exists({ leadId: id });
+    const [hasSchedules, hasAssignments] = await Promise.all([
+      prisma.schedule.count({ where: { leadId: id } }),
+      prisma.assignment.count({ where: { leadId: id } }),
+    ]);
 
     if (hasSchedules || hasAssignments) {
       throw new ApiError(

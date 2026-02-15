@@ -8,10 +8,9 @@
  *   SEED_UPDATE=1       - if set, update existing super admin password to SUPER_ADMIN_PASSWORD
  */
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { config } from '../config/index.js';
-import { User } from '../shared/models/index.js';
+import { connectDatabase, disconnectDatabase } from '../config/database.js';
+import { prisma } from '../config/database.js';
 
 dotenv.config();
 
@@ -42,11 +41,14 @@ const AGENT_SEED = {
 };
 
 async function ensureUser(seed: { name: string; email: string; password: string; role: 'super_admin' | 'admin' | 'agent'; status: 'active' }) {
-  const existing = await User.findOne({ email: seed.email });
+  const existing = await prisma.user.findUnique({ where: { email: seed.email } });
   if (existing) {
     if (shouldUpdate && seed.role === 'super_admin') {
       const hashed = await bcrypt.hash(seed.password, 12);
-      await User.findByIdAndUpdate(existing._id, { $set: { password: hashed } });
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { password: hashed },
+      });
       console.log('Updated super admin password:', seed.email);
       return;
     }
@@ -54,24 +56,26 @@ async function ensureUser(seed: { name: string; email: string; password: string;
     return;
   }
   const hashed = await bcrypt.hash(seed.password, 12);
-  await User.create({
-    name: seed.name,
-    email: seed.email,
-    password: hashed,
-    role: seed.role,
-    status: seed.status,
+  await prisma.user.create({
+    data: {
+      name: seed.name,
+      email: seed.email,
+      password: hashed,
+      role: seed.role,
+      status: seed.status,
+    },
   });
   console.log('Seeded:', seed.role, seed.email, '| password:', seed.password);
 }
 
 async function seed() {
-  await mongoose.connect(config.mongoUri);
+  await connectDatabase();
 
   await ensureUser(SUPER_ADMIN_SEED);
   await ensureUser(ADMIN_SEED);
   await ensureUser(AGENT_SEED);
 
-  await mongoose.disconnect();
+  await disconnectDatabase();
   process.exit(0);
 }
 

@@ -3,13 +3,19 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../config/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import type { JwtPayload, UserRole } from '../types/index.js';
-import { User } from '../models/index.js';
+import { prisma } from '../../config/database.js';
 
 export async function authenticate(
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> {
+  // Skip authentication for OPTIONS requests (CORS preflight)
+  if (req.method === 'OPTIONS') {
+    next();
+    return;
+  }
+
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -19,14 +25,16 @@ export async function authenticate(
     }
 
     const decoded = jwt.verify(token, config.jwt.secret) as JwtPayload;
-    const user = await User.findById(decoded.userId).select('+password');
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+    });
 
     if (!user || user.status !== 'active') {
       throw new ApiError(401, 'Invalid or inactive user');
     }
 
     req.user = {
-      userId: user._id.toString(),
+      userId: user.id,
       email: user.email,
       role: user.role as UserRole,
     };
@@ -39,6 +47,12 @@ export async function authenticate(
 
 export function authorize(...allowedRoles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
+    // Skip authorization for OPTIONS requests (CORS preflight)
+    if (req.method === 'OPTIONS') {
+      next();
+      return;
+    }
+    
     if (!req.user) {
       next(new ApiError(401, 'Authentication required'));
       return;

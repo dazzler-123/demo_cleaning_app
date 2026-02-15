@@ -1,0 +1,270 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(255)
+  email     String   @unique @db.VarChar(255)
+  password  String   @db.VarChar(255)
+  role      UserRole @default(admin)
+  status    UserStatus @default(active)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  agent     Agent?
+  createdLeads Lead[] @relation("LeadCreator")
+  assignedAssignments Assignment[] @relation("AssignmentAssigner")
+  auditLogs AuditLog[]
+  taskLogs  TaskLog[]
+
+  @@index([role, status])
+  @@map("users")
+}
+
+model Agent {
+  id            String        @id @default(uuid())
+  userId        String        @unique
+  phone         String?       @db.VarChar(20)
+  skills        String        @db.Text // JSON array stored as text
+  availability  AgentAvailability @default(available)
+  dailyCapacity Int           @default(5)
+  experience    String?       @db.Text
+  status        AgentStatus   @default(active)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments   Assignment[]
+
+  @@index([availability, status])
+  @@map("agents")
+}
+
+model Lead {
+  id              String          @id @default(uuid())
+  // Client Info (stored as JSON or separate fields)
+  clientCompanyName   String      @map("client_company_name") @db.VarChar(255)
+  clientContactPerson String      @map("client_contact_person") @db.VarChar(255)
+  clientPhone         String?     @map("client_phone") @db.VarChar(20)
+  clientEmail         String?     @map("client_email") @db.VarChar(255)
+  
+  // Location Info
+  locationAddress     String?     @map("location_address") @db.Text
+  locationCity        String      @map("location_city") @db.VarChar(100)
+  locationState       String?     @map("location_state") @db.VarChar(100)
+  locationPincode     String?     @map("location_pincode") @db.VarChar(20)
+  locationLat         Float?     @map("location_lat")
+  locationLng         Float?      @map("location_lng")
+  
+  // Cleaning Details
+  cleaningType        String      @map("cleaning_type") @db.VarChar(100)
+  cleaningCategory    String      @map("cleaning_category") @db.VarChar(100)
+  areaSize            String?     @map("area_size") @db.VarChar(50)
+  rooms               Int?
+  washrooms           Int?
+  floorType           String?     @map("floor_type") @db.VarChar(50)
+  frequency           String?     @db.VarChar(50)
+  
+  // Resources (stored as JSON)
+  resourcesMaterials  String?     @map("resources_materials") @db.Text // JSON array
+  resourcesMachines   String?     @map("resources_machines") @db.Text // JSON array
+  resourcesSafetyGear String?     @map("resources_safety_gear") @db.Text // JSON array
+  resourcesPowerAvailable Boolean? @map("resources_power_available") @default(false)
+  resourcesWaterAvailable Boolean? @map("resources_water_available") @default(false)
+  
+  images              String      @db.Text // JSON array
+  slaPriority         SLAPriority @default(medium)
+  leadType            LeadType?
+  status              LeadStatus  @default(created)
+  scheduleStatus      ScheduleStatus @default(not_scheduled)
+  assignmentStatus    AssignmentStatus @default(not_assigned)
+  quotedAmount        Decimal?    @map("quoted_amount") @db.Decimal(10, 2)
+  confirmedAmount     Decimal?     @map("confirmed_amount") @db.Decimal(10, 2)
+  createdBy           String
+  deletedAt           DateTime?   @map("deleted_at")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  creator             User        @relation("LeadCreator", fields: [createdBy], references: [id])
+  schedules           Schedule[]
+  assignments         Assignment[]
+
+  @@index([clientCompanyName])
+  @@index([status])
+  @@index([scheduleStatus, assignmentStatus])
+  @@index([createdBy])
+  @@index([deletedAt])
+  @@map("leads")
+}
+
+model Schedule {
+  id        String   @id @default(uuid())
+  leadId    String
+  date      DateTime @db.Date
+  timeSlot  String   @map("time_slot") @db.VarChar(50)
+  duration  Int      // minutes
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@index([leadId])
+  @@index([date, timeSlot])
+  @@map("schedules")
+}
+
+model Assignment {
+  id              String     @id @default(uuid())
+  leadId          String
+  scheduleId      String     @map("schedule_id")
+  agentId         String     @map("agent_id")
+  status          TaskStatus @default(pending)
+  isActive        Boolean    @default(true) @map("is_active")
+  assignedBy      String     @map("assigned_by")
+  assignedAt      DateTime   @default(now()) @map("assigned_at")
+  startedAt       DateTime?  @map("started_at")
+  completedAt     DateTime?  @map("completed_at")
+  notes           String?    @db.Text
+  completionImages String    @map("completion_images") @db.Text // JSON array
+
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  lead            Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  schedule        Schedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  agent           Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  assigner        User       @relation("AssignmentAssigner", fields: [assignedBy], references: [id])
+  taskLogs        TaskLog[]
+
+  @@index([leadId])
+  @@index([agentId, status])
+  @@index([scheduleId])
+  @@map("assignments")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  action      String   @db.VarChar(100)
+  resource    String   @db.VarChar(100)
+  resourceId  String?  @map("resource_id") @db.VarChar(255)
+  details     String?  @db.Text // JSON
+  ip          String?  @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model TaskLog {
+  id            String     @id @default(uuid())
+  assignmentId  String     @map("assignment_id")
+  fromStatus    TaskStatus @map("from_status")
+  toStatus      TaskStatus @map("to_status")
+  changedBy     String     @map("changed_by")
+  reason        String?    @db.Text
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  changer       User       @relation(fields: [changedBy], references: [id])
+
+  @@index([assignmentId])
+  @@index([createdAt(sort: Desc)])
+  @@map("task_logs")
+}
+
+enum UserRole {
+  super_admin
+  admin
+  agent
+}
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+}
+
+enum AgentAvailability {
+  available
+  busy
+  off_duty
+}
+
+enum AgentStatus {
+  active
+  inactive
+}
+
+enum LeadStatus {
+  created
+  in_progress
+  confirm
+  follow_up
+  completed
+  cancelled
+  draft
+}
+
+enum ScheduleStatus {
+  not_scheduled
+  scheduled
+}
+
+enum AssignmentStatus {
+  not_assigned
+  assigned
+}
+
+enum LeadType {
+  facebook
+  instagram
+  google
+  website
+  referral
+  walk_in
+  phone_call
+  email
+  other
+}
+
+enum SLAPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  completed
+  rescheduled
+  cancelled
+  on_hold
+}
+

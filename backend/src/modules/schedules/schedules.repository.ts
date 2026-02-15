@@ -1,12 +1,23 @@
-import { Schedule } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 
 export const schedulesRepository = {
   async findById(id: string) {
-    return Schedule.findById(id).populate('leadId');
+    return prisma.schedule.findUnique({
+      where: { id },
+      include: {
+        lead: true,
+      },
+    });
   },
 
   async findByLeadId(leadId: string) {
-    return Schedule.find({ leadId }).populate('leadId').sort({ date: 1 });
+    return prisma.schedule.findMany({
+      where: { leadId },
+      include: {
+        lead: true,
+      },
+      orderBy: { date: 'asc' },
+    });
   },
 
   async findMany(filters: {
@@ -17,46 +28,82 @@ export const schedulesRepository = {
     limit?: number;
     activeOnly?: boolean;
   }) {
-    const query: Record<string, unknown> = {};
-    if (filters.leadId) query.leadId = filters.leadId;
-    if (filters.activeOnly !== false) query.isActive = true;
+    const where: any = {};
+    if (filters.leadId) where.leadId = filters.leadId;
+    if (filters.activeOnly !== false) where.isActive = true;
     if (filters.fromDate || filters.toDate) {
-      query.date = {};
-      if (filters.fromDate) (query.date as Record<string, Date>).$gte = filters.fromDate;
-      if (filters.toDate) (query.date as Record<string, Date>).$lte = filters.toDate;
+      where.date = {};
+      if (filters.fromDate) where.date.gte = filters.fromDate;
+      if (filters.toDate) where.date.lte = filters.toDate;
     }
+    
     const page = filters.page ?? 1;
     const limit = Math.min(filters.limit ?? 50, 100);
     const skip = (page - 1) * limit;
+    
     const [items, total] = await Promise.all([
-      Schedule.find(query)
-        .populate('leadId')
-        .sort({ date: 1, timeSlot: 1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Schedule.countDocuments(query),
+      prisma.schedule.findMany({
+        where,
+        include: {
+          lead: true,
+        },
+        orderBy: [
+          { date: 'asc' },
+          { timeSlot: 'asc' },
+        ],
+        skip,
+        take: limit,
+      }),
+      prisma.schedule.count({ where }),
     ]);
+    
     return { items, total, page, limit };
   },
 
   async create(data: { leadId: string; date: Date; timeSlot: string; duration: number; notes?: string }) {
-    return Schedule.create(data);
+    return prisma.schedule.create({
+      data: {
+        leadId: data.leadId,
+        date: data.date,
+        timeSlot: data.timeSlot,
+        duration: data.duration,
+        notes: data.notes,
+      },
+      include: {
+        lead: true,
+      },
+    });
   },
 
   async deactivateByLeadId(leadId: string) {
-    return Schedule.updateMany({ leadId }, { $set: { isActive: false } });
+    return prisma.schedule.updateMany({
+      where: { leadId },
+      data: { isActive: false },
+    });
   },
 
   async findActiveByLeadId(leadId: string) {
-    return Schedule.findOne({ leadId, isActive: true });
+    return prisma.schedule.findFirst({
+      where: { leadId, isActive: true },
+      include: {
+        lead: true,
+      },
+    });
   },
 
   async update(id: string, data: Partial<{ date: Date; timeSlot: string; duration: number; notes: string }>) {
-    return Schedule.findByIdAndUpdate(id, { $set: data }, { new: true }).populate('leadId');
+    return prisma.schedule.update({
+      where: { id },
+      data,
+      include: {
+        lead: true,
+      },
+    });
   },
 
   async delete(id: string) {
-    return Schedule.findByIdAndDelete(id);
+    return prisma.schedule.delete({
+      where: { id },
+    });
   },
 };

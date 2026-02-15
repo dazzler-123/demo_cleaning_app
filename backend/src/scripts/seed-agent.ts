@@ -11,10 +11,9 @@
  * Otherwise seeds the default multi-agent list below.
  */
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { config } from '../config/index.js';
-import { User, Agent } from '../shared/models/index.js';
+import { connectDatabase, disconnectDatabase } from '../config/database.js';
+import { prisma } from '../config/database.js';
 
 dotenv.config();
 
@@ -57,7 +56,7 @@ function getAgentSeeds(): AgentSeed[] {
 }
 
 async function ensureAgent(seed: AgentSeed): Promise<void> {
-  let user = await User.findOne({ email: seed.email }).select('+password');
+  let user = await prisma.user.findUnique({ where: { email: seed.email } });
   if (user) {
     if (user.role !== 'agent') {
       console.warn('Skip (user exists, not agent):', seed.email, '| role:', user.role);
@@ -65,42 +64,49 @@ async function ensureAgent(seed: AgentSeed): Promise<void> {
     }
     if (shouldUpdate) {
       const hashed = await bcrypt.hash(seed.password, 12);
-      await User.findByIdAndUpdate(user._id, { $set: { password: hashed } });
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashed },
+      });
       console.log('Updated agent password:', seed.email);
     } else {
       console.log('Agent user already exists:', seed.email);
     }
   } else {
     const hashed = await bcrypt.hash(seed.password, 12);
-    user = await User.create({
-      name: seed.name,
-      email: seed.email,
-      password: hashed,
-      role: 'agent',
-      status: 'active',
+    user = await prisma.user.create({
+      data: {
+        name: seed.name,
+        email: seed.email,
+        password: hashed,
+        role: 'agent',
+        status: 'active',
+      },
     });
     console.log('Seeded user (agent):', seed.email, '| password:', seed.password);
   }
 
-  const agentProfile = await Agent.findOne({ userId: user!._id });
+  const agentProfile = await prisma.agent.findUnique({ where: { userId: user!.id } });
   if (agentProfile) {
     console.log('Agent profile already exists for:', seed.email);
   } else {
-    await Agent.create({
-      userId: user!._id,
-      phone: seed.phone,
-      skills: seed.skills,
-      availability: 'available',
-      dailyCapacity: seed.dailyCapacity,
-      experience: seed.experience,
-      status: 'active',
+    await prisma.agent.create({
+      data: {
+        userId: user!.id,
+        phone: seed.phone,
+        skills: JSON.stringify(seed.skills),
+        availability: 'available',
+        dailyCapacity: seed.dailyCapacity,
+        experience: seed.experience,
+        status: 'active',
+      },
     });
     console.log('Seeded agent profile:', seed.email);
   }
 }
 
 async function seedAgents() {
-  await mongoose.connect(config.mongoUri);
+  await connectDatabase();
 
   const seeds = getAgentSeeds();
   console.log('Seeding', seeds.length, 'agent(s)...');
@@ -108,7 +114,7 @@ async function seedAgents() {
     await ensureAgent(seed);
   }
 
-  await mongoose.disconnect();
+  await disconnectDatabase();
   process.exit(0);
 }
 

@@ -49,6 +49,21 @@ import {
 } from 'recharts';
 import { STATUS_COLORS, getStatusColor } from '@/utils/statusColors';
 
+// Helper function to parse skills (handles both string and array formats)
+const parseSkills = (skills: string | string[] | undefined): string[] => {
+  if (!skills) return [];
+  if (Array.isArray(skills)) return skills;
+  if (typeof skills === 'string') {
+    try {
+      const parsed = JSON.parse(skills);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export default function AgentManagement() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [total, setTotal] = useState(0);
@@ -195,7 +210,8 @@ export default function AgentManagement() {
   const openEditDialog = (agent: Agent) => {
     setEditDialog({ open: true, agent });
     setEditPhone(agent.phone ?? '');
-    setEditSkills(agent.skills?.join(', ') ?? '');
+    const skillsArray = parseSkills(agent.skills);
+    setEditSkills(skillsArray.join(', ') ?? '');
     setEditDailyCapacity(agent.dailyCapacity ?? 5);
     setEditExperience(agent.experience ?? '');
     setEditAvailability((agent.availability as 'available' | 'busy' | 'off_duty') ?? 'available');
@@ -367,7 +383,10 @@ export default function AgentManagement() {
                           <TableCell>{userName(a)}</TableCell>
                           <TableCell>{userEmail(a)}</TableCell>
                           <TableCell>{a.phone ?? '—'}</TableCell>
-                          <TableCell>{a.skills?.length ? a.skills.join(', ') : '—'}</TableCell>
+                          <TableCell>{(() => {
+                            const skillsArray = parseSkills(a.skills);
+                            return skillsArray.length ? skillsArray.join(', ') : '—';
+                          })()}</TableCell>
                           <TableCell>
                             <Typography sx={{ color: a.availability === 'available' ? '#22c55e' : a.availability === 'busy' ? '#eab308' : '#666666', fontWeight: 500, fontSize: '0.875rem', textTransform: 'capitalize' }}>
                               {a.availability.replace('_', ' ')}
@@ -449,14 +468,17 @@ export default function AgentManagement() {
                           </Typography>
                           <Typography variant="body2">{a.phone ?? '—'}</Typography>
                         </Box>
-                        {a.skills?.length > 0 && (
-                          <Box>
-                            <Typography variant="caption" color="text.secondary">
-                              Skills
-                            </Typography>
-                            <Typography variant="body2">{a.skills.join(', ')}</Typography>
-                          </Box>
-                        )}
+                        {(() => {
+                          const skillsArray = parseSkills(a.skills);
+                          return skillsArray.length > 0 && (
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
+                                Skills
+                              </Typography>
+                              <Typography variant="body2">{skillsArray.join(', ')}</Typography>
+                            </Box>
+                          );
+                        })()}
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Box>
                             <Typography variant="caption" color="text.secondary">

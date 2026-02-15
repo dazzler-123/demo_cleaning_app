@@ -4,10 +4,10 @@ import { asyncHandler } from '../../shared/utils/asyncHandler.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
 import { agentsService } from './agents.service.js';
 import { ApiError } from '../../shared/utils/ApiError.js';
-import { Agent } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 
 const createValidations = [
-  body('userId').isMongoId().withMessage('Valid user id required'),
+  body('userId').isUUID().withMessage('Valid user id required'),
   body('phone').optional().trim(),
   body('skills').optional().isArray(),
   body('skills.*').optional().trim().notEmpty(),
@@ -16,7 +16,7 @@ const createValidations = [
 ];
 
 const updateValidations = [
-  param('id').isMongoId(),
+  param('id').isUUID(),
   body('phone').optional().trim(),
   body('skills').optional().isArray(),
   body('availability').optional().isIn(['available', 'busy', 'off_duty']),
@@ -27,7 +27,7 @@ const updateValidations = [
 
 export const agentsController = {
   getById: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       const agent = await agentsService.getById(req.params.id);
       res.json({ success: true, data: agent });
@@ -35,7 +35,7 @@ export const agentsController = {
   ],
 
   getByUserId: [
-    validate([param('userId').isMongoId()]),
+    validate([param('userId').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       const agent = await agentsService.getByUserId(req.params.userId);
       res.json({ success: true, data: agent });
@@ -92,8 +92,8 @@ export const agentsController = {
       const id = req.params.id as string;
       let body: Record<string, unknown> = { ...req.body };
       if (req.user.role === 'agent') {
-        const myAgent = await Agent.findOne({ userId: req.user.userId }).lean();
-        if (!myAgent || myAgent._id.toString() !== id) {
+        const myAgent = await prisma.agent.findUnique({ where: { userId: req.user.userId } });
+        if (!myAgent || myAgent.id !== id) {
           throw new ApiError(403, 'You can only update your own agent profile');
         }
         body = { availability: req.body.availability };
@@ -104,7 +104,7 @@ export const agentsController = {
   ],
 
   delete: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       if (!req.user) throw new Error('User not set');
       await agentsService.delete(req.params.id, req.user.userId);

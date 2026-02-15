@@ -1,12 +1,72 @@
-import { Agent, User } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 
 export const agentsRepository = {
   async findById(id: string) {
-    return Agent.findById(id).populate('userId', 'name email role status');
+    const agent = await prisma.agent.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            status: true,
+          },
+        },
+      },
+    });
+    
+    if (!agent) return null;
+    
+    // Transform skills from JSON string to array
+    return {
+      ...agent,
+      skills: typeof agent.skills === 'string' ? JSON.parse(agent.skills) : agent.skills,
+      _id: agent.id,
+      userId: agent.user ? {
+        _id: agent.user.id,
+        id: agent.user.id,
+        name: agent.user.name,
+        email: agent.user.email,
+        role: agent.user.role,
+        status: agent.user.status,
+      } : agent.userId,
+    };
   },
 
   async findByUserId(userId: string) {
-    return Agent.findOne({ userId }).populate('userId', 'name email role status');
+    const agent = await prisma.agent.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            status: true,
+          },
+        },
+      },
+    });
+    
+    if (!agent) return null;
+    
+    // Transform skills from JSON string to array
+    return {
+      ...agent,
+      skills: typeof agent.skills === 'string' ? JSON.parse(agent.skills) : agent.skills,
+      _id: agent.id,
+      userId: agent.user ? {
+        _id: agent.user.id,
+        id: agent.user.id,
+        name: agent.user.name,
+        email: agent.user.email,
+        role: agent.user.role,
+        status: agent.user.status,
+      } : agent.userId,
+    };
   },
 
   async findMany(filters: {
@@ -15,22 +75,51 @@ export const agentsRepository = {
     page?: number;
     limit?: number;
   }) {
-    const query: Record<string, unknown> = {};
-    if (filters.availability) query.availability = filters.availability;
-    if (filters.status) query.status = filters.status;
+    const where: any = {};
+    if (filters.availability) where.availability = filters.availability;
+    if (filters.status) where.status = filters.status;
+    
     const page = filters.page ?? 1;
     const limit = Math.min(filters.limit ?? 20, 100);
     const skip = (page - 1) * limit;
+    
     const [items, total] = await Promise.all([
-      Agent.find(query)
-        .populate('userId', 'name email role status')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Agent.countDocuments(query),
+      prisma.agent.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.agent.count({ where }),
     ]);
-    return { items, total, page, limit };
+    
+    // Transform skills from JSON string to array
+    const transformedItems = items.map(item => ({
+      ...item,
+      skills: typeof item.skills === 'string' ? JSON.parse(item.skills) : item.skills,
+      _id: item.id,
+      userId: item.user ? {
+        _id: item.user.id,
+        id: item.user.id,
+        name: item.user.name,
+        email: item.user.email,
+        role: item.user.role,
+        status: item.user.status,
+      } : item.userId,
+    }));
+    
+    return { items: transformedItems, total, page, limit };
   },
 
   async create(data: {
@@ -40,7 +129,41 @@ export const agentsRepository = {
     dailyCapacity?: number;
     experience?: string;
   }) {
-    return Agent.create(data);
+    const agent = await prisma.agent.create({
+      data: {
+        userId: data.userId,
+        phone: data.phone,
+        skills: JSON.stringify(data.skills || []),
+        dailyCapacity: data.dailyCapacity ?? 5,
+        experience: data.experience,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            status: true,
+          },
+        },
+      },
+    });
+    
+    // Transform skills from JSON string to array
+    return {
+      ...agent,
+      skills: typeof agent.skills === 'string' ? JSON.parse(agent.skills) : agent.skills,
+      _id: agent.id,
+      userId: agent.user ? {
+        _id: agent.user.id,
+        id: agent.user.id,
+        name: agent.user.name,
+        email: agent.user.email,
+        role: agent.user.role,
+        status: agent.user.status,
+      } : agent.userId,
+    };
   },
 
   async update(
@@ -54,13 +177,46 @@ export const agentsRepository = {
       status: string;
     }>
   ) {
-    return Agent.findByIdAndUpdate(id, { $set: data }, { new: true }).populate(
-      'userId',
-      'name email role status'
-    );
+    const updateData: any = { ...data };
+    if (data.skills) {
+      updateData.skills = JSON.stringify(data.skills);
+    }
+    
+    const agent = await prisma.agent.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            status: true,
+          },
+        },
+      },
+    });
+    
+    // Transform skills from JSON string to array
+    return {
+      ...agent,
+      skills: typeof agent.skills === 'string' ? JSON.parse(agent.skills) : agent.skills,
+      _id: agent.id,
+      userId: agent.user ? {
+        _id: agent.user.id,
+        id: agent.user.id,
+        name: agent.user.name,
+        email: agent.user.email,
+        role: agent.user.role,
+        status: agent.user.status,
+      } : agent.userId,
+    };
   },
 
   async delete(id: string) {
-    return Agent.findByIdAndDelete(id);
+    return prisma.agent.delete({
+      where: { id },
+    });
   },
 };

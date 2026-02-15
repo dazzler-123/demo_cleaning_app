@@ -5,8 +5,8 @@ import { validate } from '../../shared/middleware/validate.middleware.js';
 import { schedulesService } from './schedules.service.js';
 
 const createValidations = [
-  body('leadId').isMongoId(),
-  body('date').isISO8601().toDate(),
+  body('leadId').isUUID().withMessage('Valid lead ID (UUID) required'),
+  body('date').isISO8601().toDate().withMessage('Valid date (ISO8601 format) required'),
   body('timeSlot').trim().notEmpty().withMessage('Time slot required'),
   body('duration').isInt({ min: 1 }).withMessage('Estimated duration must be greater than zero'),
   body('notes').optional().trim(),
@@ -14,7 +14,7 @@ const createValidations = [
 
 export const schedulesController = {
   getById: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID().withMessage('Invalid schedule ID format')]),
     asyncHandler(async (req: Request, res: Response) => {
       const schedule = await schedulesService.getById(req.params.id);
       res.json({ success: true, data: schedule });
@@ -22,7 +22,7 @@ export const schedulesController = {
   ],
 
   getByLeadId: [
-    validate([param('leadId').isMongoId()]),
+    validate([param('leadId').isUUID().withMessage('Invalid lead ID format')]),
     asyncHandler(async (req: Request, res: Response) => {
       const items = await schedulesService.getByLeadId(req.params.leadId);
       res.json({ success: true, data: items });
@@ -31,7 +31,7 @@ export const schedulesController = {
 
   list: [
     validate([
-      query('leadId').optional().isMongoId(),
+      query('leadId').optional().isUUID(),
       query('fromDate').optional().isISO8601().toDate(),
       query('toDate').optional().isISO8601().toDate(),
       query('page').optional().isInt({ min: 1 }).toInt(),
@@ -60,7 +60,7 @@ export const schedulesController = {
 
   update: [
     validate([
-      param('id').isMongoId(),
+      param('id').isUUID().withMessage('Invalid schedule ID format'),
       body('date').optional().isISO8601().toDate(),
       body('timeSlot').optional().trim().notEmpty(),
       body('duration').optional().isInt({ min: 0 }),
@@ -74,7 +74,7 @@ export const schedulesController = {
   ],
 
   delete: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID().withMessage('Invalid schedule ID format')]),
     asyncHandler(async (req: Request, res: Response) => {
       if (!req.user) throw new Error('User not set');
       await schedulesService.delete(req.params.id, req.user.userId);

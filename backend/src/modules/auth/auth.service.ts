@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../../config/index.js';
 import { ApiError } from '../../shared/utils/ApiError.js';
-import { User } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 import { authRepository } from './auth.repository.js';
 import { createAuditLog } from '../../shared/services/audit.service.js';
 import type { JwtPayload, UserRole } from '../../shared/types/index.js';
@@ -18,7 +18,7 @@ export const authService = {
     if (user.status !== 'active') throw new ApiError(403, 'Account is inactive');
 
     const payload: JwtPayload = {
-      userId: user._id.toString(),
+      userId: user.id,
       email: user.email,
       role: user.role as UserRole,
     };
@@ -28,7 +28,7 @@ export const authService = {
     const token = jwt.sign(payload, config.jwt.secret, options);
 
     await createAuditLog({
-      userId: user._id.toString(),
+      userId: user.id,
       action: 'login',
       resource: 'auth',
       details: { email: user.email },
@@ -37,8 +37,8 @@ export const authService = {
     return {
       token,
       user: {
-        _id: user._id.toString(),
-        id: user._id,
+        _id: user.id,
+        id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -58,7 +58,7 @@ export const authService = {
     });
 
     const payload: JwtPayload = {
-      userId: user._id.toString(),
+      userId: user.id,
       email: user.email,
       role: user.role as UserRole,
     };
@@ -67,8 +67,8 @@ export const authService = {
     return {
       token,
       user: {
-        _id: user._id.toString(),
-        id: user._id,
+        _id: user.id,
+        id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -78,8 +78,30 @@ export const authService = {
   },
 
   async getMe(userId: string) {
-    const user = await User.findById(userId).select('-password');
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
     if (!user) throw new ApiError(404, 'User not found');
-    return user;
+    
+    // Transform to match expected format with _id
+    return {
+      _id: user.id,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   },
 };

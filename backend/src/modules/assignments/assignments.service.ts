@@ -1,10 +1,8 @@
 import { ApiError } from '../../shared/utils/ApiError.js';
-import { Assignment, Agent, Lead, Schedule } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 import { assignmentsRepository } from './assignments.repository.js';
 import { createAuditLog } from '../../shared/services/audit.service.js';
-import { TaskLog } from '../../shared/models/index.js';
 import type { TaskStatus } from '../../shared/types/index.js';
-import mongoose from 'mongoose';
 import { scheduleToMinutesRange, satisfiesBuffer } from '../../shared/utils/scheduleTime.js';
 
 const AGENT_ALLOWED_STATUSES: TaskStatus[] = ['pending', 'in_progress', 'completed'];
@@ -39,8 +37,11 @@ export const assignmentsService = {
   },
 
   async getEligibleAgentIdsForSchedule(scheduleId: string): Promise<string[]> {
-    const schedule = await Schedule.findOne({ _id: scheduleId, isActive: true }).lean();
+    const schedule = await prisma.schedule.findFirst({
+      where: { id: scheduleId, isActive: true },
+    });
     if (!schedule) throw new ApiError(404, 'Schedule not found or not active');
+    
     let newStartMinutes: number;
     let newEndMinutes: number;
     try {
@@ -50,34 +51,47 @@ export const assignmentsService = {
     } catch {
       return [];
     }
+    
     const newDateStr = new Date(schedule.date).toISOString().slice(0, 10);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
-    const agents = await Agent.find({ status: 'active' }).lean();
+    const agents = await prisma.agent.findMany({
+      where: { status: 'active' },
+    });
+    
     const eligibleIds: string[] = [];
     for (const agent of agents) {
-      // Check availability status FIRST - at the top of the eligibility chec
+      // Check availability status FIRST - at the top of the eligibility check
       // Only proceed if agent is 'available'
       if (agent.availability !== 'available') continue;
-      const todayJobCount = await Assignment.countDocuments({
-        agentId: agent._id,
-        isActive: true,
-        assignedAt: { $gte: todayStart, $lt: todayEnd },
+      
+      const todayJobCount = await prisma.assignment.count({
+        where: {
+          agentId: agent.id,
+          isActive: true,
+          assignedAt: { gte: todayStart, lt: todayEnd },
+        },
       });
+      
       if (todayJobCount >= (agent.dailyCapacity ?? 5)) continue;
-      const sameDayAssignments = await Assignment.find({
-        agentId: agent._id,
-        isActive: true,
-      })
-        .populate<{ scheduleId: { date: Date; timeSlot: string; duration: number } }>('scheduleId')
-        .lean();
+      
+      const sameDayAssignments = await prisma.assignment.findMany({
+        where: {
+          agentId: agent.id,
+          isActive: true,
+        },
+        include: {
+          schedule: true,
+        },
+      });
+      
       let bufferOk = true;
       for (const existing of sameDayAssignments) {
-        const existingSched = existing.scheduleId;
-        if (!existingSched || typeof existingSched !== 'object') continue;
+        const existingSched = existing.schedule;
+        if (!existingSched) continue;
         const existingDateStr = new Date(existingSched.date).toISOString().slice(0, 10);
         if (existingDateStr !== newDateStr) continue;
         try {
@@ -98,7 +112,7 @@ export const assignmentsService = {
           break;
         }
       }
-      if (bufferOk) eligibleIds.push(agent._id.toString());
+      if (bufferOk) eligibleIds.push(agent.id);
     }
     return eligibleIds;
   },
@@ -120,7 +134,7 @@ export const assignmentsService = {
     data: { leadId: string; scheduleId: string; agentId: string; notes?: string },
     assignedBy: string
   ) {
-    const lead = await Lead.findById(data.leadId);
+    const lead = await prisma.lead.findUnique({ where: { id: data.leadId } });
     if (!lead) throw new ApiError(404, 'Lead not found');
     if (lead.status === 'cancelled') throw new ApiError(400, 'Cannot assign a cancelled lead');
     if (lead.scheduleStatus !== 'scheduled') throw new ApiError(400, 'Lead must be scheduled first');
@@ -129,10 +143,12 @@ export const assignmentsService = {
     const activeAssignment = await assignmentsRepository.findActiveByLeadId(data.leadId);
     if (activeAssignment) throw new ApiError(400, 'Lead must not already have an active assignment');
 
-    const schedule = await Schedule.findOne({ _id: data.scheduleId, leadId: data.leadId, isActive: true });
+    const schedule = await prisma.schedule.findFirst({
+      where: { id: data.scheduleId, leadId: data.leadId, isActive: true },
+    });
     if (!schedule) throw new ApiError(404, 'Schedule not found or not active for this lead');
 
-    const agent = await Agent.findById(data.agentId);
+    const agent = await prisma.agent.findUnique({ where: { id: data.agentId } });
     if (!agent) throw new ApiError(404, 'Agent not found');
     if (agent.status !== 'active') throw new ApiError(400, 'Agent must be active');
     // Do NOT check static availability flag — availability is computed per date and time slot below.
@@ -141,11 +157,15 @@ export const assignmentsService = {
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
-    const todayJobCount = await Assignment.countDocuments({
-      agentId: data.agentId,
-      isActive: true,
-      assignedAt: { $gte: todayStart, $lt: todayEnd },
+    
+    const todayJobCount = await prisma.assignment.count({
+      where: {
+        agentId: data.agentId,
+        isActive: true,
+        assignedAt: { gte: todayStart, lt: todayEnd },
+      },
     });
+    
     if (todayJobCount >= (agent.dailyCapacity ?? 5)) {
       throw new ApiError(400, 'Agent has exceeded daily job limit');
     }
@@ -161,15 +181,20 @@ export const assignmentsService = {
     } catch {
       throw new ApiError(400, 'Invalid schedule time slot format');
     }
-    const sameDayAssignments = await Assignment.find({
-      agentId: data.agentId,
-      isActive: true,
-    })
-      .populate<{ scheduleId: { date: Date; timeSlot: string; duration: number } }>('scheduleId')
-      .lean();
+    
+    const sameDayAssignments = await prisma.assignment.findMany({
+      where: {
+        agentId: data.agentId,
+        isActive: true,
+      },
+      include: {
+        schedule: true,
+      },
+    });
+    
     for (const existing of sameDayAssignments) {
-      const existingSched = existing.scheduleId;
-      if (!existingSched || typeof existingSched !== 'object') continue;
+      const existingSched = existing.schedule;
+      if (!existingSched) continue;
       const existingDateStr = new Date(existingSched.date).toISOString().slice(0, 10);
       if (existingDateStr !== newDateStr) continue;
       try {
@@ -200,16 +225,23 @@ export const assignmentsService = {
       assignedBy,
       status: 'pending',
     });
-    await Lead.findByIdAndUpdate(data.leadId, { $set: { assignmentStatus: 'assigned' } });
+    
+    await prisma.lead.update({
+      where: { id: data.leadId },
+      data: { assignmentStatus: 'assigned' },
+    });
+    
     // Do not set agent availability to 'busy' — availability is time-slot based, not a global flag.
     await createAuditLog({
       userId: assignedBy,
       action: 'create',
       resource: 'assignment',
-      resourceId: assignment._id.toString(),
+      resourceId: assignment._id?.toString() || assignment.id || '',
       details: { leadId: data.leadId, agentId: data.agentId },
     });
-    return assignmentsRepository.findById(assignment._id.toString());
+    
+    const assignmentId = (assignment as any)._id?.toString() || (assignment as any).id;
+    return assignmentsRepository.findById(assignmentId);
   },
 
   async updateStatus(
@@ -218,15 +250,23 @@ export const assignmentsService = {
     actorId: string,
     options: { isAdmin?: boolean; actorUserId?: string; reason?: string; notes?: string; completionImages?: string[] } = {}
   ) {
-    const assignment = await Assignment.findById(id).populate('agentId').populate('leadId');
+    const assignment = await prisma.assignment.findUnique({
+      where: { id },
+      include: {
+        agent: true,
+        lead: true,
+      },
+    });
+    
     if (!assignment) throw new ApiError(404, 'Assignment not found');
     if (!assignment.isActive) throw new ApiError(400, 'Cannot update an inactive assignment');
 
     if (!options.isAdmin && options.actorUserId) {
-      const agent = await Agent.findOne({ userId: options.actorUserId });
+      const agent = await prisma.agent.findUnique({
+        where: { userId: options.actorUserId },
+      });
       if (!agent) throw new ApiError(403, 'Access denied');
-      const aid = (assignment.agentId as { _id?: mongoose.Types.ObjectId })?._id ?? assignment.agentId;
-      if (aid?.toString() !== agent._id.toString()) throw new ApiError(403, 'You can only update your own tasks');
+      if (assignment.agentId !== agent.id) throw new ApiError(403, 'You can only update your own tasks');
     }
 
     const fromStatus = assignment.status as TaskStatus;
@@ -258,23 +298,32 @@ export const assignmentsService = {
     );
     if (!updated) throw new ApiError(404, 'Assignment not found');
 
-    await TaskLog.create({
-      assignmentId: id,
-      fromStatus,
-      toStatus: status,
-      changedBy: actorId,
-      reason: options.reason,
+    await prisma.taskLog.create({
+      data: {
+        assignmentId: id,
+        fromStatus: fromStatus as any,
+        toStatus: status as any,
+        changedBy: actorId,
+        reason: options.reason,
+      },
     });
 
     if (status === 'completed') {
-      const leadId = (assignment.leadId as { _id?: mongoose.Types.ObjectId })?._id ?? assignment.leadId;
-      if (leadId) await Lead.findByIdAndUpdate(leadId, { $set: { status: 'completed' } });
+      await prisma.lead.update({
+        where: { id: assignment.leadId },
+        data: { status: 'completed' },
+      });
     }
 
     if (status === 'cancelled') {
-      await Assignment.findByIdAndUpdate(id, { $set: { isActive: false } });
-      const leadId = (assignment.leadId as { _id?: mongoose.Types.ObjectId })?._id ?? assignment.leadId;
-      if (leadId) await Lead.findByIdAndUpdate(leadId, { $set: { assignmentStatus: 'not_assigned' } });
+      await prisma.assignment.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      await prisma.lead.update({
+        where: { id: assignment.leadId },
+        data: { assignmentStatus: 'not_assigned' },
+      });
     }
 
     // Do not toggle agent availability — availability is computed per time slot, not a global flag.

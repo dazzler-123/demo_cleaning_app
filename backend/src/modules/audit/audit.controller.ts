@@ -7,7 +7,7 @@ import { auditRepository } from './audit.repository.js';
 export const auditController = {
   list: [
     validate([
-      query('userId').optional().isMongoId(),
+      query('userId').optional().isUUID(),
       query('resource').optional().trim(),
       query('resourceId').optional().trim(),
       query('action').optional().trim(),

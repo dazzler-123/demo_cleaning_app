@@ -6,16 +6,17 @@ import { assignmentsService } from './assignments.service.js';
 import { upload } from '../../shared/middleware/upload.middleware.js';
 import { uploadMultipleToCloudinary } from '../../shared/services/cloudinary.service.js';
 import type { TaskStatus } from '../../shared/types/index.js';
+import { prisma } from '../../config/database.js';
 
 const createValidations = [
-  body('leadId').isMongoId(),
-  body('scheduleId').isMongoId(),
-  body('agentId').isMongoId(),
+  body('leadId').isUUID(),
+  body('scheduleId').isUUID(),
+  body('agentId').isUUID(),
   body('notes').optional().trim(),
 ];
 
 const statusValidations = [
-  param('id').isMongoId(),
+  param('id').isUUID(),
   body('status')
     .isIn(['pending', 'in_progress', 'completed', 'rescheduled', 'cancelled', 'on_hold']),
   body('reason').optional().trim(),
@@ -23,7 +24,7 @@ const statusValidations = [
 ];
 
 const statusValidationsWithFiles = [
-  param('id').isMongoId(),
+  param('id').isUUID(),
   body('status')
     .isIn(['pending', 'in_progress', 'completed', 'rescheduled', 'cancelled', 'on_hold']),
   body('reason').optional().trim(),
@@ -32,16 +33,17 @@ const statusValidationsWithFiles = [
 
 export const assignmentsController = {
   getById: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       const assignment = await assignmentsService.getById(req.params.id);
       if (req.user?.role === 'agent') {
-        const { Agent } = await import('../../shared/models/index.js');
-        const agent = await Agent.findOne({ userId: req.user.userId });
+        const agent = await prisma.agent.findUnique({ where: { userId: req.user.userId } });
         const aid = typeof assignment.agentId === 'object' && assignment.agentId && '_id' in assignment.agentId
           ? (assignment.agentId as { _id: { toString(): string } })._id.toString()
+          : typeof assignment.agentId === 'object' && assignment.agentId && 'id' in assignment.agentId
+          ? (assignment.agentId as { id: string }).id
           : String(assignment.agentId);
-        if (!agent || aid !== agent._id.toString()) {
+        if (!agent || aid !== agent.id) {
           const { ApiError } = await import('../../shared/utils/ApiError.js');
           throw new ApiError(403, 'Access denied');
         }
@@ -61,13 +63,12 @@ export const assignmentsController = {
       const agentId = req.query.agentId as string | undefined;
       const userId = req.user.userId;
       if (req.user.role === 'agent' && !agentId) {
-        const { Agent } = await import('../../shared/models/index.js');
-        const agent = await Agent.findOne({ userId });
+        const agent = await prisma.agent.findUnique({ where: { userId } });
         if (!agent) {
           res.json({ success: true, data: [] });
           return;
         }
-        const items = await assignmentsService.getByAgentId(agent._id.toString(), {
+        const items = await assignmentsService.getByAgentId(agent.id, {
           status: req.query.status as string | undefined,
           fromDate: req.query.fromDate ? new Date(req.query.fromDate as string) : undefined,
           toDate: req.query.toDate ? new Date(req.query.toDate as string) : undefined,
@@ -91,7 +92,7 @@ export const assignmentsController = {
   ],
 
   getByScheduleId: [
-    validate([param('scheduleId').isMongoId()]),
+    validate([param('scheduleId').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       const items = await assignmentsService.getByScheduleId(req.params.scheduleId);
       res.json({ success: true, data: items });
@@ -99,7 +100,7 @@ export const assignmentsController = {
   ],
 
   getEligibleAgents: [
-    validate([query('scheduleId').isMongoId()]),
+    validate([query('scheduleId').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       const agentIds = await assignmentsService.getEligibleAgentIdsForSchedule(req.query.scheduleId as string);
       res.json({ success: true, data: { eligibleAgentIds: agentIds } });
@@ -108,7 +109,7 @@ export const assignmentsController = {
 
   getAgentTasks: [
     validate([
-      param('agentId').isMongoId(),
+      param('agentId').isUUID(),
       query('status').optional().isIn(['pending', 'in_progress', 'completed', 'rescheduled', 'cancelled', 'on_hold']),
       query('fromDate').optional().isISO8601().toDate(),
       query('toDate').optional().isISO8601().toDate(),
@@ -168,9 +169,9 @@ export const assignmentsController = {
 
   list: [
     validate([
-      query('leadId').optional().isMongoId(),
-      query('agentId').optional().isMongoId(),
-      query('scheduleId').optional().isMongoId(),
+      query('leadId').optional().isUUID(),
+      query('agentId').optional().isUUID(),
+      query('scheduleId').optional().isUUID(),
       query('status')
         .optional()
         .custom((v) => !v || v === 'undefined' || ['pending', 'in_progress', 'completed', 'rescheduled', 'cancelled', 'on_hold'].includes(v))
@@ -235,7 +236,7 @@ export const assignmentsController = {
   ],
 
   delete: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       if (!req.user) throw new Error('User not set');
       await assignmentsService.delete(req.params.id, req.user.userId);

@@ -41,7 +41,7 @@ const createValidations = [
 ];
 
 const updateValidations = [
-  param('id').isMongoId(),
+  param('id').isUUID(),
   body('client').optional().isObject(),
   body('location').optional().isObject(),
   body('cleaningDetails').optional().isObject(),
@@ -56,7 +56,7 @@ const updateValidations = [
 
 export const leadsController = {
   getById: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID().withMessage('Invalid lead ID format')]),
     asyncHandler(async (req: Request, res: Response) => {
       const lead = await leadsService.getById(req.params.id);
       res.json({ success: true, data: lead });
@@ -68,7 +68,7 @@ export const leadsController = {
       query('status').optional().trim(),
       query('scheduleStatus').optional().isIn(['not_scheduled', 'scheduled']),
       query('assignmentStatus').optional().isIn(['not_assigned', 'assigned']),
-      query('createdBy').optional().isMongoId(),
+      query('createdBy').optional().isUUID(),
       query('search').optional().trim(),
       query('excludeCancelled').optional().isIn(['true', 'false']),
       query('excludeConfirmed').optional().isIn(['true', 'false']),
@@ -110,7 +110,7 @@ export const leadsController = {
   ],
 
   cancel: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       if (!req.user) throw new Error('User not set');
       const lead = await leadsService.cancel(req.params.id, req.user.userId);
@@ -119,7 +119,7 @@ export const leadsController = {
   ],
 
   delete: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID()]),
     asyncHandler(async (req: Request, res: Response) => {
       if (!req.user) throw new Error('User not set');
       await leadsService.delete(req.params.id, req.user.userId);

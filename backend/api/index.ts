@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import mongoose from 'mongoose';
 
 // Dynamic imports to handle path resolution
 let app: any;
@@ -44,11 +43,6 @@ let connectionPromise: Promise<void> | null = null;
 async function ensureDatabaseConnection(): Promise<void> {
   // Ensure modules are loaded first
   await initializeModules();
-
-  // Check if already connected using mongoose connection state
-  if (mongoose.connection.readyState === 1) {
-    return; // Already connected
-  }
 
   // If connection is in progress, wait for it
   if (connectionPromise) {

@@ -1,34 +1,51 @@
-import { Lead, Assignment, Agent, User, Schedule } from '../../shared/models/index.js';
-import mongoose from 'mongoose';
+import { prisma } from '../../config/database.js';
 
 export const dashboardRepository = {
   async getLeadCounts(filters?: { fromDate?: Date; toDate?: Date }) {
-    const match: Record<string, unknown> = { deletedAt: null };
+    const where: any = { deletedAt: null };
     if (filters?.fromDate || filters?.toDate) {
-      match.createdAt = {};
-      if (filters.fromDate) (match.createdAt as Record<string, Date>).$gte = filters.fromDate;
-      if (filters.toDate) (match.createdAt as Record<string, Date>).$lte = filters.toDate;
+      where.createdAt = {};
+      if (filters.fromDate) where.createdAt.gte = filters.fromDate;
+      if (filters.toDate) where.createdAt.lte = filters.toDate;
     }
-    const total = await Lead.countDocuments(match);
-    const byStatus = await Lead.aggregate([
-      { $match: match },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
+    
+    const total = await prisma.lead.count({ where });
+    
+    // Get counts by status
+    const byStatusRaw = await prisma.lead.groupBy({
+      by: ['status'],
+      where,
+      _count: { status: true },
+    });
+    
+    const byStatus = byStatusRaw.map(item => ({
+      _id: item.status,
+      count: item._count.status,
+    }));
+    
     return { total, byStatus };
   },
 
   async getLeadsByType(filters?: { fromDate?: Date; toDate?: Date }) {
-    const match: Record<string, unknown> = { deletedAt: null };
+    const where: any = { deletedAt: null };
     if (filters?.fromDate || filters?.toDate) {
-      match.createdAt = {};
-      if (filters.fromDate) (match.createdAt as Record<string, Date>).$gte = filters.fromDate;
-      if (filters.toDate) (match.createdAt as Record<string, Date>).$lte = filters.toDate;
+      where.createdAt = {};
+      if (filters.fromDate) where.createdAt.gte = filters.fromDate;
+      if (filters.toDate) where.createdAt.lte = filters.toDate;
     }
-    const byType = await Lead.aggregate([
-      { $match: match },
-      { $group: { _id: '$leadType', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-    ]);
+    
+    const byTypeRaw = await prisma.lead.groupBy({
+      by: ['leadType'],
+      where,
+      _count: { leadType: true },
+      orderBy: { _count: { leadType: 'desc' } },
+    });
+    
+    const byType = byTypeRaw.map(item => ({
+      _id: item.leadType,
+      count: item._count.leadType,
+    }));
+    
     return byType;
   },
 
@@ -37,7 +54,13 @@ export const dashboardRepository = {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return Schedule.countDocuments({ date: { $gte: today, $lt: tomorrow }, isActive: true });
+    
+    return prisma.schedule.count({
+      where: {
+        date: { gte: today, lt: tomorrow },
+        isActive: true,
+      },
+    });
   },
 
   async getLeadsAssignedToday() {
@@ -45,59 +68,103 @@ export const dashboardRepository = {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return Assignment.countDocuments({
-      isActive: true,
-      assignedAt: { $gte: today, $lt: tomorrow },
+    
+    return prisma.assignment.count({
+      where: {
+        isActive: true,
+        assignedAt: { gte: today, lt: tomorrow },
+      },
     });
   },
 
   async getAssignmentCounts(filters?: { fromDate?: Date; toDate?: Date }) {
-    const match: Record<string, unknown> = {};
+    const where: any = {};
     if (filters?.fromDate || filters?.toDate) {
-      match.assignedAt = {};
-      if (filters.fromDate) (match.assignedAt as Record<string, Date>).$gte = filters.fromDate;
-      if (filters.toDate) (match.assignedAt as Record<string, Date>).$lte = filters.toDate;
+      where.assignedAt = {};
+      if (filters.fromDate) where.assignedAt.gte = filters.fromDate;
+      if (filters.toDate) where.assignedAt.lte = filters.toDate;
     }
-    const total = await Assignment.countDocuments(match);
-    const byStatus = await Assignment.aggregate([
-      { $match: match },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
+    
+    const total = await prisma.assignment.count({ where });
+    
+    const byStatusRaw = await prisma.assignment.groupBy({
+      by: ['status'],
+      where,
+      _count: { status: true },
+    });
+    
+    const byStatus = byStatusRaw.map(item => ({
+      _id: item.status,
+      count: item._count.status,
+    }));
+    
     return { total, byStatus };
   },
 
   async getJobsInProgress() {
-    return Assignment.countDocuments({ isActive: true, status: 'in_progress' });
+    return prisma.assignment.count({
+      where: { isActive: true, status: 'in_progress' },
+    });
   },
 
   async getJobsCompleted(filters?: { fromDate?: Date; toDate?: Date }) {
-    const match: Record<string, unknown> = { status: 'completed' };
+    const where: any = { status: 'completed' };
     if (filters?.fromDate || filters?.toDate) {
-      match.completedAt = {};
-      if (filters.fromDate) (match.completedAt as Record<string, Date>).$gte = filters.fromDate;
-      if (filters.toDate) (match.completedAt as Record<string, Date>).$lte = filters.toDate;
+      where.completedAt = {};
+      if (filters.fromDate) where.completedAt.gte = filters.fromDate;
+      if (filters.toDate) where.completedAt.lte = filters.toDate;
     }
-    return Assignment.countDocuments(match);
+    
+    return prisma.assignment.count({ where });
   },
 
   async getAgentWorkloadCounts() {
-    return Assignment.aggregate([
-      { $match: { isActive: true, status: { $in: ['pending', 'in_progress'] } } },
-      { $group: { _id: '$agentId', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 5 },
-      { $lookup: { from: 'agents', localField: '_id', foreignField: '_id', as: 'agent' } },
-      { $unwind: '$agent' },
-      { $lookup: { from: 'users', localField: 'agent.userId', foreignField: '_id', as: 'user' } },
-      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
-      { $project: { agentId: '$_id', agentName: '$user.name', agentPhone: '$agent.phone', count: 1, _id: 0 } },
-    ]);
+    // Get assignments grouped by agent
+    const workloadRaw = await prisma.assignment.groupBy({
+      by: ['agentId'],
+      where: {
+        isActive: true,
+        status: { in: ['pending', 'in_progress'] },
+      },
+      _count: { agentId: true },
+      orderBy: { _count: { agentId: 'desc' } },
+      take: 5,
+    });
+    
+    // Get agent and user details
+    const agentIds = workloadRaw.map(w => w.agentId);
+    const agents = await prisma.agent.findMany({
+      where: { id: { in: agentIds } },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+    
+    const agentMap = new Map(agents.map(a => [a.id, a]));
+    
+    return workloadRaw.map(item => ({
+      agentId: item.agentId,
+      agentName: agentMap.get(item.agentId)?.user?.name || '',
+      agentPhone: agentMap.get(item.agentId)?.phone || null,
+      count: item._count.agentId,
+    }));
   },
 
   async getAgentStats() {
-    const total = await Agent.countDocuments({ status: 'active' });
-    const available = await Agent.countDocuments({ status: 'active', availability: 'available' });
-    const busy = await Agent.countDocuments({ status: 'active', availability: 'busy' });
+    const total = await prisma.agent.count({ where: { status: 'active' } });
+    const available = await prisma.agent.count({
+      where: { status: 'active', availability: 'available' },
+    });
+    const busy = await prisma.agent.count({
+      where: { status: 'active', availability: 'busy' },
+    });
+    
     return { total, available, busy };
   },
 
@@ -105,139 +172,176 @@ export const dashboardRepository = {
     const from = new Date();
     from.setDate(from.getDate() - days);
     from.setHours(0, 0, 0, 0);
-    const trends = await Lead.aggregate([
-      { $match: { deletedAt: null, createdAt: { $gte: from } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          count: { $sum: 1 },
-          cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-    return trends;
+    
+    // Use raw SQL for date grouping as Prisma doesn't support date formatting in groupBy
+    const trends = await prisma.$queryRaw<Array<{ _id: string; count: bigint; cancelled: bigint }>>`
+      SELECT 
+        DATE_FORMAT(created_at, '%Y-%m-%d') as _id,
+        COUNT(*) as count,
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
+      FROM leads
+      WHERE deleted_at IS NULL 
+        AND created_at >= ${from}
+      GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+      ORDER BY _id ASC
+    `;
+    
+    return trends.map(t => ({
+      _id: t._id,
+      count: Number(t.count),
+      cancelled: Number(t.cancelled),
+    }));
   },
 
   async getJobTrends(days: number) {
     const from = new Date();
     from.setDate(from.getDate() - days);
-    const trends = await Assignment.aggregate([
-      { $match: { assignedAt: { $gte: from } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$assignedAt' } },
-          total: { $sum: 1 },
-          completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-    return trends;
+    
+    const trends = await prisma.$queryRaw<Array<{ _id: string; total: bigint; completed: bigint }>>`
+      SELECT 
+        DATE_FORMAT(assigned_at, '%Y-%m-%d') as _id,
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+      FROM assignments
+      WHERE assigned_at >= ${from}
+      GROUP BY DATE_FORMAT(assigned_at, '%Y-%m-%d')
+      ORDER BY _id ASC
+    `;
+    
+    return trends.map(t => ({
+      _id: t._id,
+      total: Number(t.total),
+      completed: Number(t.completed),
+    }));
   },
 
   async getSLACompliance(days: number) {
     const from = new Date();
     from.setDate(from.getDate() - days);
-    const completed = await Assignment.countDocuments({
-      status: 'completed',
-      completedAt: { $gte: from },
+    
+    const completed = await prisma.assignment.count({
+      where: {
+        status: 'completed',
+        completedAt: { gte: from },
+      },
     });
-    const total = await Assignment.countDocuments({
-      status: { $in: ['completed', 'cancelled', 'in_progress', 'pending'] },
-      assignedAt: { $gte: from },
+    
+    const total = await prisma.assignment.count({
+      where: {
+        status: { in: ['completed', 'cancelled', 'in_progress', 'pending'] },
+        assignedAt: { gte: from },
+      },
     });
+    
     const compliance = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
     return { completed, total, compliance };
   },
 
   async getUserCounts() {
-    const total = await User.countDocuments();
-    const byRole = await User.aggregate([
-      { $group: { _id: '$role', count: { $sum: 1 } } },
-    ]);
+    const total = await prisma.user.count();
+    
+    const byRoleRaw = await prisma.user.groupBy({
+      by: ['role'],
+      _count: { role: true },
+    });
+    
+    const byRole = byRoleRaw.map(item => ({
+      _id: item.role,
+      count: item._count.role,
+    }));
+    
     return { total, byRole };
   },
 
   // Agent-specific dashboard methods
-  async getAgentAssignmentStats(agentId: mongoose.Types.ObjectId, filters?: { fromDate?: Date; toDate?: Date }) {
-    const match: Record<string, unknown> = { agentId, isActive: true };
+  async getAgentAssignmentStats(agentId: string, filters?: { fromDate?: Date; toDate?: Date }) {
+    const where: any = { agentId, isActive: true };
     
     if (filters?.fromDate || filters?.toDate) {
-      match.assignedAt = {};
-      if (filters.fromDate) (match.assignedAt as Record<string, Date>).$gte = filters.fromDate;
-      if (filters.toDate) (match.assignedAt as Record<string, Date>).$lte = filters.toDate;
+      where.assignedAt = {};
+      if (filters.fromDate) where.assignedAt.gte = filters.fromDate;
+      if (filters.toDate) where.assignedAt.lte = filters.toDate;
     }
 
-    const total = await Assignment.countDocuments(match);
-    const byStatus = await Assignment.aggregate([
-      { $match: match },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
+    const total = await prisma.assignment.count({ where });
+    
+    const byStatusRaw = await prisma.assignment.groupBy({
+      by: ['status'],
+      where,
+      _count: { status: true },
+    });
+
+    const byStatus = byStatusRaw.map(item => ({
+      _id: item.status,
+      count: item._count.status,
+    }));
 
     return { total, byStatus };
   },
 
-  async getAgentTaskTrends(agentId: mongoose.Types.ObjectId, days: number) {
+  async getAgentTaskTrends(agentId: string, days: number) {
     const from = new Date();
     from.setDate(from.getDate() - days);
     from.setHours(0, 0, 0, 0);
 
-    const assignedTrends = await Assignment.aggregate([
-      { $match: { agentId, assignedAt: { $gte: from } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$assignedAt' } },
-          assigned: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
+    const assignedTrends = await prisma.$queryRaw<Array<{ _id: string; assigned: bigint }>>`
+      SELECT 
+        DATE_FORMAT(assigned_at, '%Y-%m-%d') as _id,
+        COUNT(*) as assigned
+      FROM assignments
+      WHERE agent_id = ${agentId}
+        AND assigned_at >= ${from}
+      GROUP BY DATE_FORMAT(assigned_at, '%Y-%m-%d')
+      ORDER BY _id ASC
+    `;
 
-    const completedTrends = await Assignment.aggregate([
-      { $match: { agentId, status: 'completed', completedAt: { $gte: from } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } },
-          completed: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
+    const completedTrends = await prisma.$queryRaw<Array<{ _id: string; completed: bigint }>>`
+      SELECT 
+        DATE_FORMAT(completed_at, '%Y-%m-%d') as _id,
+        COUNT(*) as completed
+      FROM assignments
+      WHERE agent_id = ${agentId}
+        AND status = 'completed'
+        AND completed_at >= ${from}
+      GROUP BY DATE_FORMAT(completed_at, '%Y-%m-%d')
+      ORDER BY _id ASC
+    `;
 
-    const cancelledTrends = await Assignment.aggregate([
-      { $match: { agentId, status: 'cancelled', assignedAt: { $gte: from } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$assignedAt' } },
-          cancelled: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
+    const cancelledTrends = await prisma.$queryRaw<Array<{ _id: string; cancelled: bigint }>>`
+      SELECT 
+        DATE_FORMAT(assigned_at, '%Y-%m-%d') as _id,
+        COUNT(*) as cancelled
+      FROM assignments
+      WHERE agent_id = ${agentId}
+        AND status = 'cancelled'
+        AND assigned_at >= ${from}
+      GROUP BY DATE_FORMAT(assigned_at, '%Y-%m-%d')
+      ORDER BY _id ASC
+    `;
 
-    // Merge assigned, completed, and cancelled trends by date
+    // Merge trends by date
     const trendsMap = new Map<string, { assigned: number; completed: number; cancelled: number }>();
     
     assignedTrends.forEach((item) => {
-      trendsMap.set(item._id, { assigned: item.assigned, completed: 0, cancelled: 0 });
+      trendsMap.set(item._id, { assigned: Number(item.assigned), completed: 0, cancelled: 0 });
     });
 
     completedTrends.forEach((item) => {
       const existing = trendsMap.get(item._id);
       if (existing) {
-        existing.completed = item.completed;
+        existing.completed = Number(item.completed);
       } else {
-        trendsMap.set(item._id, { assigned: 0, completed: item.completed, cancelled: 0 });
+        trendsMap.set(item._id, { assigned: 0, completed: Number(item.completed), cancelled: 0 });
       }
     });
 
     cancelledTrends.forEach((item) => {
       const existing = trendsMap.get(item._id);
       if (existing) {
-        existing.cancelled = item.cancelled;
+        existing.cancelled = Number(item.cancelled);
       } else {
-        trendsMap.set(item._id, { assigned: 0, completed: 0, cancelled: item.cancelled });
+        trendsMap.set(item._id, { assigned: 0, completed: 0, cancelled: Number(item.cancelled) });
       }
     });
 
@@ -249,17 +353,22 @@ export const dashboardRepository = {
     }));
   },
 
-  async getAgentCompletionRate(agentId: mongoose.Types.ObjectId, filters?: { fromDate?: Date; toDate?: Date }) {
-    const match: Record<string, unknown> = { agentId };
+  async getAgentCompletionRate(agentId: string, filters?: { fromDate?: Date; toDate?: Date }) {
+    const where: any = { agentId };
     
     if (filters?.fromDate || filters?.toDate) {
-      match.assignedAt = {};
-      if (filters.fromDate) (match.assignedAt as Record<string, Date>).$gte = filters.fromDate;
-      if (filters.toDate) (match.assignedAt as Record<string, Date>).$lte = filters.toDate;
+      where.assignedAt = {};
+      if (filters.fromDate) where.assignedAt.gte = filters.fromDate;
+      if (filters.toDate) where.assignedAt.lte = filters.toDate;
     }
 
-    const total = await Assignment.countDocuments(match);
-    const completed = await Assignment.countDocuments({ ...match, status: 'completed' });
+    const total = await prisma.assignment.count({ where });
+    const completed = await prisma.assignment.count({ 
+      where: {
+        ...where,
+        status: 'completed'
+      }
+    });
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return { total, completed, completionRate };

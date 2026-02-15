@@ -1,5 +1,5 @@
 import { ApiError } from '../../shared/utils/ApiError.js';
-import { Assignment, Lead, Schedule } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 import { schedulesRepository } from './schedules.repository.js';
 import { createAuditLog } from '../../shared/services/audit.service.js';
 import { scheduleToMinutesRange, satisfiesBuffer, timeSlotToMinutes } from '../../shared/utils/scheduleTime.js';
@@ -48,7 +48,7 @@ export const schedulesService = {
     data: { leadId: string; date: Date; timeSlot: string; duration: number; notes?: string },
     actorId: string
   ) {
-    const lead = await Lead.findById(data.leadId);
+    const lead = await prisma.lead.findUnique({ where: { id: data.leadId } });
     if (!lead) throw new ApiError(404, 'Lead not found');
     if (lead.status === 'cancelled') throw new ApiError(400, 'Cannot schedule a cancelled lead');
     if (lead.status !== 'confirm') throw new ApiError(400, 'Lead must be in confirm status to be scheduled');
@@ -79,16 +79,20 @@ export const schedulesService = {
       timeSlot: slotTrimmed,
     });
     if (lead.scheduleStatus === 'not_scheduled') {
-      await Lead.findByIdAndUpdate(data.leadId, { $set: { scheduleStatus: 'scheduled' } });
+      await prisma.lead.update({
+        where: { id: data.leadId },
+        data: { scheduleStatus: 'scheduled' },
+      });
     }
+    const createdId = (created as any)._id?.toString() || (created as any).id;
     await createAuditLog({
       userId: actorId,
       action: existingActive ? 'reschedule' : 'create',
       resource: 'schedule',
-      resourceId: created._id.toString(),
+      resourceId: createdId,
       details: { leadId: data.leadId, date: data.date },
     });
-    return schedulesRepository.findById(created._id.toString());
+    return schedulesRepository.findById(createdId);
   },
 
   async update(
@@ -96,20 +100,22 @@ export const schedulesService = {
     data: Partial<{ date: Date; timeSlot: string; duration: number; notes: string }>,
     actorId: string
   ) {
-    const existing = await Schedule.findById(id).populate<{ leadId: { _id: unknown; assignmentStatus?: string; status?: string } }>('leadId').lean();
+    const existing = await prisma.schedule.findUnique({
+      where: { id },
+      include: { lead: true },
+    });
     if (!existing) throw new ApiError(404, 'Schedule not found');
-    const leadId = typeof existing.leadId === 'object' && existing.leadId && '_id' in existing.leadId
-      ? (existing.leadId as { _id: unknown })._id
-      : existing.leadId;
-    const lead = await Lead.findById(leadId).lean();
+    const lead = existing.lead;
     if (!lead) throw new ApiError(404, 'Lead not found');
 
     // Rule: If lead is not assigned, schedule is fully editable. If assigned but not completed, it can be rescheduled.
     if (lead.assignmentStatus === 'assigned') {
-      const assignment = await Assignment.findOne({
-        scheduleId: id,
-        isActive: true,
-      }).lean();
+      const assignment = await prisma.assignment.findFirst({
+        where: {
+          scheduleId: id,
+          isActive: true,
+        },
+      });
       if (assignment) {
         if (assignment.status === 'completed') {
           throw new ApiError(400, 'Cannot reschedule: this job is already completed.');
@@ -138,16 +144,19 @@ export const schedulesService = {
           throw new ApiError(400, 'Invalid schedule time slot format');
         }
         const newDateStr = new Date(newDate).toISOString().slice(0, 10);
-        const otherSameDayAssignments = await Assignment.find({
-          agentId: assignment.agentId,
-          isActive: true,
-          scheduleId: { $ne: id },
-        })
-          .populate<{ scheduleId: { date: Date; timeSlot: string; duration: number } }>('scheduleId')
-          .lean();
+        const otherSameDayAssignments = await prisma.assignment.findMany({
+          where: {
+            agentId: assignment.agentId,
+            isActive: true,
+            scheduleId: { not: id },
+          },
+          include: {
+            schedule: true,
+          },
+        });
         for (const other of otherSameDayAssignments) {
-          const otherSched = other.scheduleId;
-          if (!otherSched || typeof otherSched !== 'object') continue;
+          const otherSched = other.schedule;
+          if (!otherSched) continue;
           const otherDateStr = new Date(otherSched.date).toISOString().slice(0, 10);
           if (otherDateStr !== newDateStr) continue;
           try {
@@ -207,7 +216,7 @@ export const schedulesService = {
   },
 
   async delete(id: string, actorId: string) {
-    const hasAssignments = await Assignment.exists({ scheduleId: id });
+    const hasAssignments = await prisma.assignment.count({ where: { scheduleId: id } }) > 0;
     if (hasAssignments) throw new ApiError(400, 'Cannot delete schedule with assignments');
     const schedule = await schedulesRepository.delete(id);
     if (!schedule) throw new ApiError(404, 'Schedule not found');

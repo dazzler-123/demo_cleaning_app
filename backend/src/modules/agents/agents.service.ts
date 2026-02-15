@@ -1,5 +1,5 @@
 import { ApiError } from '../../shared/utils/ApiError.js';
-import { Agent, User } from '../../shared/models/index.js';
+import { prisma } from '../../config/database.js';
 import { agentsRepository } from './agents.repository.js';
 import { createAuditLog } from '../../shared/services/audit.service.js';
 
@@ -27,14 +27,25 @@ export const agentsService = {
 
   /** Users with role agent who do not yet have an agent profile (for create-agent dropdown). */
   async getAvailableUsersForProfile() {
-    const [agentRoleUsers, existingAgentUserIds] = await Promise.all([
-      User.find({ role: 'agent' }).select('_id name email').lean(),
-      Agent.find({}).select('userId').lean().then((docs) =>
-        new Set(docs.map((d) => (d.userId != null ? String(d.userId) : '')).filter(Boolean))
-      ),
+    const [agentRoleUsers, existingAgents] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: 'agent' },
+        select: { id: true, name: true, email: true },
+      }),
+      prisma.agent.findMany({
+        select: { userId: true },
+      }),
     ]);
-    const available = agentRoleUsers.filter((u) => u._id && !existingAgentUserIds.has(u._id.toString()));
-    return available.map((u) => ({ _id: u._id.toString(), name: u.name, email: u.email }));
+    
+    const existingAgentUserIds = new Set(existingAgents.map(a => a.userId));
+    const available = agentRoleUsers.filter(u => !existingAgentUserIds.has(u.id));
+    
+    return available.map(u => ({ 
+      _id: u.id, 
+      id: u.id,
+      name: u.name, 
+      email: u.email 
+    }));
   },
 
   async create(
@@ -47,18 +58,23 @@ export const agentsService = {
     },
     actorId: string
   ) {
-    const existing = await Agent.findOne({ userId: data.userId });
+    const existing = await prisma.agent.findUnique({ where: { userId: data.userId } });
     if (existing) throw new ApiError(400, 'Agent profile already exists for this user');
-    const user = await User.findById(data.userId);
+    
+    const user = await prisma.user.findUnique({ where: { id: data.userId } });
     if (!user || user.role !== 'agent') throw new ApiError(400, 'User must have agent role');
+    
     const agent = await agentsRepository.create(data);
+    
+    const agentId = (agent as any)._id?.toString() || (agent as any).id;
     await createAuditLog({
       userId: actorId,
       action: 'create',
       resource: 'agent',
-      resourceId: agent._id.toString(),
+      resourceId: agentId,
     });
-    return agentsRepository.findById(agent._id.toString());
+    
+    return agentsRepository.findById(agentId);
   },
 
   async update(

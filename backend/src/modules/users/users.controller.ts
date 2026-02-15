@@ -13,14 +13,14 @@ const createValidations = [
 ];
 
 const updateValidations = [
-  param('id').isMongoId().withMessage('Invalid user id'),
+  param('id').isUUID().withMessage('Invalid user id'),
   body('name').optional().trim().notEmpty(),
   body('status').optional().isIn(['active', 'inactive', 'suspended']),
 ];
 
 export const usersController = {
   getById: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID().withMessage('Invalid user ID format')]),
     asyncHandler(async (req: Request, res: Response) => {
       const user = await usersService.getById(req.params.id);
       res.json({ success: true, data: user });
@@ -65,7 +65,7 @@ export const usersController = {
   ],
 
   delete: [
-    validate([param('id').isMongoId()]),
+    validate([param('id').isUUID().withMessage('Invalid user ID format')]),
     asyncHandler(async (req: Request, res: Response) => {
       if (!req.user) throw new Error('User not set');
       await usersService.delete(req.params.id, req.user.userId);

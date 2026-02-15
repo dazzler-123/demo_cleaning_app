@@ -3,7 +3,7 @@ import { query } from 'express-validator';
 import { asyncHandler } from '../../shared/utils/asyncHandler.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
 import { dashboardService } from './dashboard.service.js';
-import mongoose from 'mongoose';
+import { prisma } from '../../config/database.js';
 
 export const dashboardController = {
   getOverview: [
@@ -32,14 +32,15 @@ export const dashboardController = {
       if (!req.user) throw new Error('User not set');
       
       // Get agent ID from user
-      const Agent = (await import('../../shared/models/index.js')).Agent;
-      const agent = await Agent.findOne({ userId: req.user.userId }).lean();
+      const agent = await prisma.agent.findUnique({
+        where: { userId: req.user.userId },
+      });
       if (!agent) {
         return res.status(404).json({ success: false, message: 'Agent profile not found' });
       }
 
       const result = await dashboardService.getAgentOverview(
-        agent._id as mongoose.Types.ObjectId,
+        agent.id,
         {
           fromDate: req.query.fromDate ? new Date(req.query.fromDate as string) : undefined,
           toDate: req.query.toDate ? new Date(req.query.toDate as string) : undefined,
@@ -52,21 +53,33 @@ export const dashboardController = {
 
   getAgentReport: [
     validate([
-      query('agentId').isMongoId(),
+      query('agentId').isUUID(),
       query('fromDate').optional().isISO8601().toDate(),
       query('toDate').optional().isISO8601().toDate(),
       query('days').optional().isInt({ min: 1, max: 365 }).toInt(),
     ]),
     asyncHandler(async (req: Request, res: Response) => {
       const agentId = req.query.agentId as string;
-      const Agent = (await import('../../shared/models/index.js')).Agent;
-      const agent = await Agent.findById(agentId);
+      const agent = await prisma.agent.findUnique({
+        where: { id: agentId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              status: true,
+            },
+          },
+        },
+      });
       if (!agent) {
         return res.status(404).json({ success: false, message: 'Agent not found' });
       }
 
       const result = await dashboardService.getAgentOverview(
-        new mongoose.Types.ObjectId(agentId),
+        agentId,
         {
           fromDate: req.query.fromDate ? new Date(req.query.fromDate as string) : undefined,
           toDate: req.query.toDate ? new Date(req.query.toDate as string) : undefined,

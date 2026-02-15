@@ -2,16 +2,16 @@
  * Seeds multiple leads with a fixed createdBy user id.
  * Run: npm run seed:leads (from backend)
  *
- * Uses createdBy: 697c4663f184a21810cf9641
+ * Uses MySQL/Prisma - requires users to be seeded first (npm run seed)
+ * Uses createdBy: super admin user (or first admin user found)
  */
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import { config } from '../config/index.js';
-import { Lead } from '../shared/models/index.js';
+import { connectDatabase, disconnectDatabase, prisma } from '../config/database.js';
+import { leadsService } from '../modules/leads/leads.service.js';
+import { UserRole } from '@prisma/client';
 
 dotenv.config();
 
-const CREATED_BY_ID = new mongoose.Types.ObjectId('697c4663f184a21810cf9641');
 
 // Random company name generator
 const companyPrefixes = [
@@ -74,6 +74,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'high' as const,
     leadType: 'facebook' as const,
+    images: [],
   },
   {
     client: {
@@ -99,6 +100,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'high' as const,
     leadType: 'google' as const,
+    images: [],
   },
   {
     client: {
@@ -124,6 +126,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'medium' as const,
     leadType: 'instagram' as const,
+    images: [],
   },
   {
     client: {
@@ -149,6 +152,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'high' as const,
     leadType: 'website' as const,
+    images: [],
   },
   {
     client: {
@@ -174,6 +178,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'high' as const,
     leadType: 'referral' as const,
+    images: [],
   },
 
   // ---- 15 more ----
@@ -202,6 +207,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'medium' as const,
     leadType: 'phone_call' as const,
+    images: [],
   },
   {
     client: {
@@ -227,6 +233,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'high' as const,
     leadType: 'email' as const,
+    images: [],
   },
 
   {
@@ -253,6 +260,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'high' as const,
     leadType: 'walk_in' as const,
+    images: [],
   },
 
   {
@@ -279,6 +287,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'low' as const,
     leadType: 'other' as const,
+    images: [],
   },
 
   {
@@ -305,6 +314,7 @@ const LEADS_SEED  = [
     },
     slaPriority: 'high' as const,
     leadType: 'website' as const,
+    images: [],
   },
 
   // total = 20 objects
@@ -313,25 +323,43 @@ const LEADS_SEED  = [
 
 
 async function seedLeads() {
-  await mongoose.connect(config.mongoUri);
+  await connectDatabase();
 
-  const createdBy = CREATED_BY_ID;
+  // Find or use super admin user as createdBy
+  let createdByUser = await prisma.user.findFirst({
+    where: { role: UserRole.SUPER_ADMIN },
+  });
+
+  if (!createdByUser) {
+    // Fallback to first admin user
+    createdByUser = await prisma.user.findFirst({
+      where: { role: UserRole.ADMIN },
+    });
+  }
+
+  if (!createdByUser) {
+    console.error('Error: No admin or super_admin user found. Please run npm run seed first.');
+    await disconnectDatabase();
+    process.exit(1);
+  }
+
+  const createdBy = createdByUser.id;
   let created = 0;
 
   for (const data of LEADS_SEED) {
-    await Lead.create({
-      ...data,
-      createdBy,
-      status: 'created',
-      scheduleStatus: 'not_scheduled',
-      assignmentStatus: 'not_assigned',
-    });
-    created++;
-    console.log('Seeded lead:', data.client.companyName);
+    try {
+      await leadsService.create({
+        ...data,
+      }, createdBy);
+      created++;
+      console.log('Seeded lead:', data.client.companyName);
+    } catch (error) {
+      console.error(`Error seeding lead ${data.client.companyName}:`, error);
+    }
   }
 
-  console.log(`\nDone. Created ${created} leads (createdBy: ${createdBy}).`);
-  await mongoose.disconnect();
+  console.log(`\nDone. Created ${created} leads (createdBy: ${createdByUser.email}).`);
+  await disconnectDatabase();
   process.exit(0);
 }
 

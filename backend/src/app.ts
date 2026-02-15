@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import mongoose from 'mongoose';
+import { prisma } from './config/database.js';
 import { config } from './config/index.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
@@ -22,7 +22,18 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+// CORS configuration - must be first middleware
+app.use(cors({ 
+  origin: ['http://localhost:5173', 'http://localhost:4000'], 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  maxAge: 0 // Set to 0 to disable preflight caching (for development - helps with cache issues)
+}));
+
 app.use(express.json());
 
 // API Request Logging
@@ -45,6 +56,18 @@ app.use('/api/uploads', express.static(uploadsPath, {
     res.set('Access-Control-Allow-Origin', '*');
   },
 }));
+// Explicit OPTIONS handler for all API routes (before route handlers)
+app.options('/api/*', cors({
+  origin: ['http://localhost:5173', 'http://localhost:4000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  maxAge: 0
+}));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/agents', agentsRoutes);
@@ -55,23 +78,29 @@ app.use('/api/task-logs', taskLogsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/audit', auditRoutes);
 
-app.get('/api/health', (_req, res) => {
-  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  const readyStates = {
-    0: 'disconnected',
-    1: 'connected',
-    2: 'connecting',
-    3: 'disconnecting',
-  };
-  res.json({ 
-    ok: dbStatus === 'connected', 
-    timestamp: new Date().toISOString(),
-    database: {
-      status: dbStatus,
-      readyState: mongoose.connection.readyState,
-      readyStateText: readyStates[mongoose.connection.readyState as keyof typeof readyStates] || 'unknown'
-    }
-  });
+app.get('/api/health', async (_req, res) => {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ 
+      ok: true, 
+      timestamp: new Date().toISOString(),
+      database: {
+        status: 'connected',
+        provider: 'mysql'
+      }
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      ok: false, 
+      timestamp: new Date().toISOString(),
+      database: {
+        status: 'disconnected',
+        provider: 'mysql',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    });
+  }
 });
 
 // Debug endpoint to check uploads path

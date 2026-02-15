@@ -1,5 +1,4 @@
 import { dashboardRepository } from './dashboard.repository.js';
-import mongoose from 'mongoose';
 
 export const dashboardService = {
   async getOverview(filters?: { fromDate?: Date; toDate?: Date; days?: number }) {
@@ -56,7 +55,7 @@ export const dashboardService = {
     };
   },
 
-  async getAgentOverview(agentId: mongoose.Types.ObjectId, filters?: { fromDate?: Date; toDate?: Date; days?: number }) {
+  async getAgentOverview(agentId: string, filters?: { fromDate?: Date; toDate?: Date; days?: number }) {
     const from = filters?.fromDate;
     const to = filters?.toDate;
     const days = filters?.days ?? 30;
